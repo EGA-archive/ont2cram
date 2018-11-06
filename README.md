@@ -5,6 +5,9 @@ USAGE:
 python ont2cram.py -i INPUTDIR -o OUTPUTFILE
 
   -i INPUTDIR, --inputdir INPUTDIR
-                        Input directory containing Fast5 files
+        
+        Input directory containing Fast5 files
+                        
   -o OUTPUTFILE, --outputfile OUTPUTFILE
+                        
                         Output CRAM filename
