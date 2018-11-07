@@ -52,15 +52,15 @@ def is_shared_value(value, total_fast5_files):
 def write_cram(fast5_files, cram_file):
     total_fast5_files = len(fast5_files)
     comments_list = []
-    tag =  int('02', 36)
+    tag =  int('a2', 36)
     for key,val in global_dict_attributes.items():
         (value, typ) = convert_type(val[0])
         tag_or_val = "CV:"+repr(value) 
         if not is_shared_value(val[1], total_fast5_files): 
-            tag_or_val = "TG:"+numpy.base_repr(tag, 36)
+            tag_or_val = "TG:"+numpy.base_repr(tag, 36).lower()
             tag += 1 
 
-        comments_list.append( "ONT:'{}':{} {}:{}".format(key, typ, tag_or_val,  val[1]) )
+        comments_list.append( "ONT:'{}':{} {}".format(key, typ, tag_or_val) )
         global_dict_attributes[key][1] = tag_or_val
             
     header = {  'HD': {'VN': '1.0'},
@@ -73,8 +73,8 @@ def write_cram(fast5_files, cram_file):
             with h5py.File(filename,'r') as fast5:   
                 fastq_lines = fast5['Analyses/Basecall_1D_000/BaseCalled_template/Fastq'].value.splitlines()
                 a = pysam.AlignedSegment()
-                a.query_name = fastq_lines[0][:5]
-                a.query_sequence=fastq_lines[1][:5]
+                a.query_name = fastq_lines[0]
+                a.query_sequence=fastq_lines[1]
                 a.flag = 4
                 a.reference_id = 0
                 a.reference_start = 0
@@ -83,9 +83,9 @@ def write_cram(fast5_files, cram_file):
                 a.next_reference_id = 0
                 a.next_reference_start=0
                 a.template_length=0
-                a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3][:5])
+                a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
                 
-                tag00 = []
+                tagA0 = []
                 signal_path = ""
                 def process_attrs( name, group ):
                     nonlocal signal_path
@@ -99,12 +99,12 @@ def write_cram(fast5_files, cram_file):
                             if pair[1].startswith("TG:"): a.set_tag(pair[1][3:], value, 'i' if typ=="i64" else None)
                         except KeyError:
                             # have not seen this attr before - save at read level
-                            tag00.append( "{},{},{}".format(full_key, typ, value) )
+                            tagA0.append( "{},{},{}".format(full_key, typ, value) )
                     
                                             
                 fast5.visititems( process_attrs )
-                a.set_tag( "00",';'.join(tag00) )
-                a.set_tag( "01", array.array('H',fast5[signal_path].value) )
+                a.set_tag( "a0",';'.join(tagA0) )
+                a.set_tag( "a1", array.array('h',fast5[signal_path].value) )
 
                 outf.write(a)
 
