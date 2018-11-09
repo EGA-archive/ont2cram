@@ -11,19 +11,19 @@ global_dict_attributes = {}
 
 def convert_type(value):
     typ= {
-        "<class 'numpy.float32'>" : 'f32',
-        "<class 'numpy.float64'>" : 'f64',                
-        "<class 'numpy.int8'>"    : 'i8',
-        "<class 'numpy.int32'>"   : 'i32',
-        "<class 'numpy.int64'>"   : 'i64',  
-        "<class 'numpy.uint8'>"   : 'ui8',
-        "<class 'numpy.uint32'>"  : 'ui32',        
-        "<class 'numpy.uint64'>"  : 'ui64',
-        "<class 'str'>"           : 'str',
-        "<class 'numpy.bytes_'>"  : 'bytes',
-        "<class 'bytes'>"         : 'bytes'
+        "<class 'numpy.float32'>" : ('f32','f'),
+        "<class 'numpy.float64'>" : ('f64','f'),               
+        "<class 'numpy.int8'>"    : ('i8','i'),
+        "<class 'numpy.int32'>"   : ('i32','i'),
+        "<class 'numpy.int64'>"   : ('i64','i'),  
+        "<class 'numpy.uint8'>"   : ('ui8','i'),
+        "<class 'numpy.uint32'>"  : ('ui32','i'),        
+        "<class 'numpy.uint64'>"  : ('ui64','i'),
+        "<class 'str'>"           : ('str',None),
+        "<class 'numpy.bytes_'>"  : ('bytes',None),
+        "<class 'bytes'>"         : ('bytes',None)
     }[str(type(value))]
-    return ( value.decode('ascii') if typ=='bytes' else value, typ )
+    return ( value.decode('ascii') if typ[0]=='bytes' else value, typ[0], typ[1] )
     
 def pre_process_group_attrs(name, group):
     global global_dict_attributes
@@ -54,13 +54,13 @@ def write_cram(fast5_files, cram_file):
     comments_list = []
     tag =  int('a2', 36)
     for key,val in global_dict_attributes.items():
-        (value, typ) = convert_type(val[0])
+        value,hdf_type,_ = convert_type(val[0])
         tag_or_val = "CV:"+repr(value) 
         if not is_shared_value(val[1], total_fast5_files): 
             tag_or_val = "TG:"+numpy.base_repr(tag, 36).lower()
             tag += 1 
 
-        comments_list.append( "ONT:'{}':{} {}".format(key, typ, tag_or_val) )
+        comments_list.append( "ONT:'{}':{} {}".format(key, hdf_type, tag_or_val) )
         global_dict_attributes[key][1] = tag_or_val
             
     header = {  'HD': {'VN': '1.0'},
@@ -70,9 +70,41 @@ def write_cram(fast5_files, cram_file):
 
     with pysam.AlignmentFile( cram_file, "wc", header=header, format_options=[b"no_ref=1"] ) as outf:
         for filename in tqdm.tqdm(fast5_files): 
-            with h5py.File(filename,'r') as fast5:   
-                fastq_lines = fast5['Analyses/Basecall_1D_000/BaseCalled_template/Fastq'].value.splitlines()
+            with h5py.File(filename,'r') as fast5:
                 a = pysam.AlignedSegment()
+
+                tagA0 = []
+                signal_path = None
+                fastq_path  = None
+
+                def process_attrs( name, group ):
+                    nonlocal signal_path
+                    nonlocal fastq_path
+                    if "/Reads/Read" in name and name.endswith("Signal"): signal_path=name
+                    if name.endswith("BaseCalled_template/Fastq")       : fastq_path=name
+                    for key, val in group.attrs.items():
+                        (value, hdf_type, tag_type) = convert_type(val)
+                        full_key = name+'/'+key
+                        try:
+                            pair = global_dict_attributes[full_key]
+                            if pair[1].startswith("TG:"): a.set_tag(pair[1][3:], value, tag_type)
+                        except KeyError:
+                            # have not seen this attr before - save at read level
+                            tagA0.append( "{},{},{}".format(full_key, hdf_type, value) )
+                        except ValueError:
+                            sys.exit("Could not detemine tag type (val={}, hdf_type={})".format(value,hdf_type))
+                                                            
+                fast5.visititems( process_attrs )
+
+                if( not signal_path or not fastq_path ): 
+                    sys.exit("Bad Fast5: signal or fastq could not be found in '{}'".format(filename))
+
+                a.set_tag( "a0",';'.join(tagA0) )
+                # print("Final signal = {}".format(signal_path))
+                a.set_tag( "a1", array.array('h',fast5[signal_path].value) )
+                      
+                fastq_lines = fast5[fastq_path].value.splitlines()
+                
                 a.query_name = fastq_lines[0]
                 a.query_sequence=fastq_lines[1]
                 a.flag = 4
@@ -84,27 +116,6 @@ def write_cram(fast5_files, cram_file):
                 a.next_reference_start=0
                 a.template_length=0
                 a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
-                
-                tagA0 = []
-                signal_path = ""
-                def process_attrs( name, group ):
-                    nonlocal signal_path
-                    if "/Reads/Read" in name and name.endswith("Signal"): 
-                        signal_path=name
-                    for key, val in group.attrs.items():
-                        (value, typ) = convert_type(val)
-                        full_key = name+'/'+key
-                        try:
-                            pair = global_dict_attributes[full_key]
-                            if pair[1].startswith("TG:"): a.set_tag(pair[1][3:], value, 'i' if typ=="i64" else None)
-                        except KeyError:
-                            # have not seen this attr before - save at read level
-                            tagA0.append( "{},{},{}".format(full_key, typ, value) )
-                    
-                                            
-                fast5.visititems( process_attrs )
-                a.set_tag( "a0",';'.join(tagA0) )
-                a.set_tag( "a1", array.array('h',fast5[signal_path].value) )
 
                 outf.write(a)
 
