@@ -58,7 +58,7 @@ def is_shared_value(value, total_fast5_files):
     return value > total_fast5_files//2
 
 
-def write_cram(fast5_files, cram_file):
+def write_cram(fast5_files, cram_file, skipsignal):
     total_fast5_files = len(fast5_files)
     comments_list = []
     tag = int('a0', 36)
@@ -117,7 +117,7 @@ def write_cram(fast5_files, cram_file):
                 if( not signal_path or not fastq_path ): 
                     sys.exit("Bad Fast5: signal or fastq could not be found in '{}'".format(filename))
 
-                a.set_tag( "zz", array.array('h',fast5[signal_path].value) )
+                if not skipsignal: a.set_tag( "zz", array.array('h',fast5[signal_path].value) )
                       
                 fastq_lines = fast5[fastq_path].value.splitlines()
                 
@@ -139,6 +139,7 @@ def main():
     parser = argparse.ArgumentParser(description='Fast5 to CRAM conversion utility')
     parser.add_argument('-i','--inputdir', help='Input directory containing Fast5 files', required=True)
     parser.add_argument('-o','--outputfile', help='Output CRAM filename', required=True)
+    parser.add_argument('-s','--skipsignal', help='Skips the raw signal data', action='store_true')
     args = parser.parse_args()
 
     if not os.path.isdir(args.inputdir): sys.exit( 'Not dir: %s' % args.inputdir )
@@ -150,7 +151,7 @@ def main():
         walk_fast5( f, pre_process_group_attrs )
 
     print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
-    write_cram( fast5_files, args.outputfile )
+    write_cram( fast5_files, args.outputfile, args.skipsignal )
 
 if __name__ == "__main__":
     main()
