@@ -5,8 +5,32 @@ import pysam
 import tqdm
 import array
 import argparse
-import numpy
 import re
+
+class Tag:
+    DIGITS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    BASE = len(DIGITS)
+    def __init__(self, start_tag="00"):
+        self.current_tag_num = self.tag_to_int(start_tag)
+
+    def tag_to_int(self, tag_name):
+        return self.DIGITS.index(tag_name[0])*self.BASE+self.DIGITS.index(tag_name[1])
+
+    def increment(self):
+        self.current_tag_num += 1
+
+    def get_name(self):
+        return self.int_to_tag(self.current_tag_num)
+
+    def int_to_tag(self, num):
+        assert num >= 0
+        base = len(self.DIGITS)
+        res = ""
+        while not res or num > 0:
+            num, i = divmod(num, base)
+            res = self.DIGITS[i] + res
+        return res
+
 
 global_dict_attributes = {}
 
@@ -61,13 +85,13 @@ def is_shared_value(value, total_fast5_files):
 def write_cram(fast5_files, cram_file, skipsignal):
     total_fast5_files = len(fast5_files)
     comments_list = []
-    tag = int('a0', 36)
+    tag = Tag("a0")
     for key,val in global_dict_attributes.items():
         value,hdf_type,_ = convert_type(val[0])
 
-        tag_and_val = "TG:"+numpy.base_repr(tag, 36).lower()
-        tag += 1 
-        if tag_and_val.endswith("zz"): sys.exit("Running out of Tag space : too many atributes in Fast5")
+        tag_and_val = "TG:"+tag.get_name()
+        tag.increment()
+        if tag_and_val.endswith("zZ"): sys.exit("Running out of Tag space : too many atributes in Fast5")
         
         if is_shared_value(val[1], total_fast5_files):  tag_and_val += " CV:"+repr(value)
 
@@ -117,7 +141,7 @@ def write_cram(fast5_files, cram_file, skipsignal):
                 if( not signal_path or not fastq_path ): 
                     sys.exit("Bad Fast5: signal or fastq could not be found in '{}'".format(filename))
 
-                if not skipsignal: a.set_tag( "zz", array.array('h',fast5[signal_path].value) )
+                if not skipsignal: a.set_tag( "zZ", array.array('h',fast5[signal_path].value) )
                       
                 fastq_lines = fast5[fastq_path].value.splitlines()
                 
