@@ -7,8 +7,14 @@ import array
 import argparse
 import re
 
+FIRST_TAG    = "a0"
+LAST_TAG     = "zZ"
+SIGNAL_TAG   = "zZ"
+FILENAME_TAG = "X0"
+RESERVED_TAGS = [SIGNAL_TAG, FILENAME_TAG]
+
 class Tag:
-    DIGITS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     BASE = len(DIGITS)
     def __init__(self, start_tag="00"):
         self.current_tag_num = self.tag_to_int(start_tag)
@@ -85,13 +91,13 @@ def is_shared_value(value, total_fast5_files):
 def write_cram(fast5_files, cram_file, skipsignal):
     total_fast5_files = len(fast5_files)
     comments_list = []
-    tag = Tag("a0")
+    tag = Tag(FIRST_TAG)
     for key,val in global_dict_attributes.items():
         value,hdf_type,_ = convert_type(val[0])
 
         tag_and_val = "TG:"+tag.get_name()
         tag.increment()
-        if tag_and_val.endswith("zZ"): sys.exit("Running out of Tag space : too many atributes in Fast5")
+        if tag_and_val.endswith(LAST_TAG): sys.exit("Running out of Tag space : too many atributes in Fast5")
         
         if is_shared_value(val[1], total_fast5_files):  tag_and_val += " CV:"+repr(value)
 
@@ -141,7 +147,9 @@ def write_cram(fast5_files, cram_file, skipsignal):
                 if( not signal_path or not fastq_path ): 
                     sys.exit("Bad Fast5: signal or fastq could not be found in '{}'".format(filename))
 
-                if not skipsignal: a.set_tag( "zZ", array.array('h',fast5[signal_path].value) )
+                if not skipsignal: a.set_tag( SIGNAL_TAG, array.array('h',fast5[signal_path].value) )
+                a.set_tag( FILENAME_TAG, os.path.basename(filename) )
+                
                       
                 fastq_lines = fast5[fastq_path].value.splitlines()
                 
