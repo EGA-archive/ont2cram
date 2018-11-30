@@ -49,9 +49,15 @@ def cram_to_fast5(cram_filename, output_dir):
             group_name,_,attr_name =  full_attr_path.rpartition('/')                
             group = hdf5_file.require_group(group_name)
             group.attrs[attr_name] = attr_value
+
+        def decode_escape(value, t):
+            return value.decode('string_escape') if t in ["str","bytes"] else value
+
+        def encode_ascii(value, t):            
+            return value.encode("ascii") if t=="bytes" else value
             
-        def encode_attr(value):
-            return value.encode("ascii") if a.type=="bytes" else value
+        def encode_attr(value, t):
+            return encode_ascii(value, t)        
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
@@ -59,7 +65,7 @@ def cram_to_fast5(cram_filename, output_dir):
              
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
                 for a in attr_dict.values():
-                    if a.value: write_hdf_attr( f, a.path, encode_attr(a.value), read_number ) 
+                    if a.value: write_hdf_attr( f, a.path, encode_attr(a.value,a.type), read_number ) 
 
                 for tag_name, tag_val in read.get_tags():
                     if tag_name in RESERVED_TAGS: continue    
@@ -67,9 +73,7 @@ def cram_to_fast5(cram_filename, output_dir):
                     #print( "or_t={}, type={}, val={}".format(a.type, str(type(tag_val)), tag_val) )
 
                     if a.value != tag_val: 
-                        write_hdf_attr( f, a.path, encode_attr(tag_val), read_number )
-            #print(read)
-
+                        write_hdf_attr( f, a.path, encode_attr(tag_val,a.type), read_number )
 
 def main():
     parser = argparse.ArgumentParser(description='CRAM to Fast5 conversion utility')
