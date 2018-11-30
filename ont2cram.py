@@ -40,9 +40,6 @@ class Tag:
 
 global_dict_attributes = {}
 
-def to_str(value,t):
-    return value if t in ["str","bytes"] else repr(value)
-
 def convert_type(value):
     typ= {
         "<class 'numpy.float32'>" : ('f32','f'),
@@ -102,7 +99,7 @@ def write_cram(fast5_files, cram_file, skipsignal):
         tag.increment()
         if tag_and_val.endswith(LAST_TAG): sys.exit("Running out of Tag space : too many atributes in Fast5")
         
-        if is_shared_value(val[1], total_fast5_files):  tag_and_val += " CV:"+to_str(value,hdf_type)
+        if is_shared_value(val[1], total_fast5_files):  tag_and_val += " CV:"+repr(value)
 
         comments_list.append( "ONT:'{}':{} {}".format(key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
@@ -140,10 +137,8 @@ def write_cram(fast5_files, cram_file, skipsignal):
                         tag_name = pair[1][3:5]
                         pos_CV = pair[1].find("CV:")
                         val_CV = None if pos_CV==-1 else pair[1][pos_CV+3:]
-                        #if full_key == "Analyses/Hairpin_Split_000/Configuration/aggregator/sections":
-                        #    print("val_CV={}, value={}".format(val_CV, value))
                         try:
-                            if to_str(value,hdf_type) != val_CV : a.set_tag(tag_name, value, tag_type)
+                            if repr(value) != val_CV : a.set_tag(tag_name, value, tag_type)
                         except ValueError:
                             sys.exit("Could not detemine tag type (val={}, hdf_type={})".format(value,hdf_type))
                                                             
