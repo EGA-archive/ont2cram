@@ -51,13 +51,16 @@ def cram_to_fast5(cram_filename, output_dir):
             group.attrs[attr_name] = attr_value
 
         def decode_escape(value, t):
-            return value.decode('string_escape') if t in ["str","bytes"] else value
+            return str.encode(value).decode('unicode_escape') if t in ["str","bytes"] else value
 
-        def encode_ascii(value, t):            
-            return value.encode("ascii") if t=="bytes" else value
+        def encode_ascii_utf8(value, t):            
+            if t=="str":   return value.encode("utf-8") 
+            #print("t={}, val={}".format(t, value))            
+            if t=="bytes": return value.encode("ascii") 
+            return value
             
         def encode_attr(value, t):
-            return encode_ascii(value, t)        
+            return encode_ascii_utf8( decode_escape(value,t), t )        
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
