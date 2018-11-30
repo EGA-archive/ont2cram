@@ -1,6 +1,7 @@
 import os
 import sys
 import h5py
+import tqdm
 import shlex
 import pysam
 import argparse
@@ -21,7 +22,7 @@ def cram_to_fast5(cram_filename, output_dir):
       
     attr_dict = {}
     with pysam.AlignmentFile(cram_filename, "rc") as samfile:
-        filename_tag = None
+        read_number_tag = None
         for comment in samfile.header["CO"]:
             if not comment.startswith("ONT:"): continue
 
@@ -37,7 +38,14 @@ def cram_to_fast5(cram_filename, output_dir):
             
             attr_dict[tag]=a
 
-        def write_hdf_attr(hdf5_file, full_attr_path, attr_value):
+            if a.path == "Raw/Reads/Read_XXX/read_number":
+                read_number_tag = tag
+        
+        if not read_number_tag:
+            sys.exit("Could not find read_number")
+
+        def write_hdf_attr(hdf5_file, full_attr_path, attr_value, read_number):
+            full_attr_path = full_attr_path.replace("Read_XXX",  read_number)
             group_name,_,attr_name =  full_attr_path.rpartition('/')                
             group = hdf5_file.require_group(group_name)
             group.attrs[attr_name] = attr_value
@@ -45,12 +53,13 @@ def cram_to_fast5(cram_filename, output_dir):
         def encode_attr(value):
             return value.encode("ascii") if a.type=="bytes" else value
             
-        for read in samfile.fetch(until_eof=True):
+        for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
+            read_number  = "Read_"+str(read.get_tag(read_number_tag))
              
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
                 for a in attr_dict.values():
-                    if a.value: write_hdf_attr( f, a.path, encode_attr(a.value) ) 
+                    if a.value: write_hdf_attr( f, a.path, encode_attr(a.value), read_number ) 
 
                 for tag_name, tag_val in read.get_tags():
                     if tag_name in RESERVED_TAGS: continue    
@@ -58,7 +67,7 @@ def cram_to_fast5(cram_filename, output_dir):
                     #print( "or_t={}, type={}, val={}".format(a.type, str(type(tag_val)), tag_val) )
 
                     if a.value != tag_val: 
-                        write_hdf_attr( f, a.path, encode_attr(tag_val) )
+                        write_hdf_attr( f, a.path, encode_attr(tag_val), read_number )
             #print(read)
 
 
