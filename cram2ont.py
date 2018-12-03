@@ -65,12 +65,6 @@ def cram_to_fast5(cram_filename, output_dir):
             group_name,_,attr_name =  full_attr_path.rpartition('/')                
             group = hdf5_file.require_group(group_name)
 
-#            if str(attr_value).startswith("717c5226-6c55-4004-b3f6-3105100ccf28"):
-            #if is_36_byte_hex_str(attr_value): print("val={}, len={}".format(attr_value, len(attr_value)) )
-            if is_hex_str(attr_value,37):
-                group.attrs.create(attr_name, attr_value, dtype="|S37")
-                return
-            
             if is_hex_str(attr_value,36):
                 group.attrs.create(attr_name, attr_value, dtype="|S36")
             else:
