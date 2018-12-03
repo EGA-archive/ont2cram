@@ -78,6 +78,7 @@ def pre_process_group_attrs(name, group):
 
 def walk_fast5( filename, walk_group_function ):
     with h5py.File(filename,'r') as f:
+        walk_group_function("/", f)
         f.visititems( walk_group_function )
 
 def get_list_of_fast5_files( dir ):
