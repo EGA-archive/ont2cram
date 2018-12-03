@@ -13,6 +13,20 @@ RESERVED_TAGS = [SIGNAL_TAG, FILENAME_TAG]
 def dump(obj):
   for attr in dir(obj):
     print("obj.%s = %r" % (attr, getattr(obj, attr)))
+
+def convert_type(value, typ):
+	if typ=='f32':	return numpy.float32(val)
+    if typ=='f64':	return numpy.float64(val)
+    if typ=='i8':	return numpy.int8(val)
+    if typ=='i32':	return numpy.int32(val)
+    if typ=='i64':	return numpy.int64(val)
+    if typ=='ui8':	return numpy.uint8(val)
+    if typ=='ui32':	return numpy.uint32(val)
+    if typ=='ui64':	return numpy.uint64(val)
+    if typ=='str':	return str(val)
+	if typ=='bytes':return numpy.bytes_(val)
+    if typ=='bytes':return bytes(val)
+    
     
 def cram_to_fast5(cram_filename, output_dir):
     class Attribute:
