@@ -1,40 +1,37 @@
 import os
+import re
 import sys
 import h5py
 import tqdm
 import shlex
 import pysam
+import numpy
 import argparse
 
 FILENAME_TAG = "X0"
 SIGNAL_TAG   = "zZ"
 RESERVED_TAGS = [SIGNAL_TAG, FILENAME_TAG]
+STR_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
-def dump(obj):
-  for attr in dir(obj):
-    print("obj.%s = %r" % (attr, getattr(obj, attr)))
-
-def convert_type(value, typ):
-	if typ=='f32':	return numpy.float32(val)
-    if typ=='f64':	return numpy.float64(val)
-    if typ=='i8':	return numpy.int8(val)
+def convert_type(val, typ):
+    if typ=='f32':  return numpy.float32(val)
+    if typ=='f64':  return numpy.float64(val)
+    if typ=='i8':   return numpy.int8(val)
     if typ=='i32':	return numpy.int32(val)
     if typ=='i64':	return numpy.int64(val)
     if typ=='ui8':	return numpy.uint8(val)
     if typ=='ui32':	return numpy.uint32(val)
     if typ=='ui64':	return numpy.uint64(val)
-    if typ=='str':	return str(val)
-	if typ=='bytes':return numpy.bytes_(val)
-    if typ=='bytes':return bytes(val)
-    
+    if typ=='str':  return str.encode(val).decode('unicode_escape').encode("utf-8")
+    if typ=='bytes':return str.encode(val).decode('unicode_escape').encode("ascii")
     
 def cram_to_fast5(cram_filename, output_dir):
     class Attribute:
       path = ''
       type = ''
       value = None
-      
-    attr_dict = {}
+
+    attr_dict = {}    
     with pysam.AlignmentFile(cram_filename, "rc") as samfile:
         read_number_tag = None
         for comment in samfile.header["CO"]:
@@ -58,23 +55,26 @@ def cram_to_fast5(cram_filename, output_dir):
         if not read_number_tag:
             sys.exit("Could not find read_number")
 
+        def is_hex_str( obj, expected_len, is_null_term=False ):
+            bytes_to_remove_end = 1 if is_null_term else 0
+            return isinstance(obj,bytes) and len(obj)==expected_len and (not is_null_term or obj[-1:]==0) \
+                   and STR_HEX_PATTERN.match(obj[:expected_len-bytes_to_remove_end].decode())           
+            
         def write_hdf_attr(hdf5_file, full_attr_path, attr_value, read_number):
             full_attr_path = full_attr_path.replace("Read_XXX",  read_number)
             group_name,_,attr_name =  full_attr_path.rpartition('/')                
             group = hdf5_file.require_group(group_name)
-            group.attrs[attr_name] = attr_value
 
-        def decode_escape(value, t):
-            return str.encode(value).decode('unicode_escape') if t in ["str","bytes"] else value
-
-        def encode_ascii_utf8(value, t):            
-            if t=="str":   return value.encode("utf-8") 
-            #print("t={}, val={}".format(t, value))            
-            if t=="bytes": return value.encode("ascii") 
-            return value
+#            if str(attr_value).startswith("717c5226-6c55-4004-b3f6-3105100ccf28"):
+            #if is_36_byte_hex_str(attr_value): print("val={}, len={}".format(attr_value, len(attr_value)) )
+            if is_hex_str(attr_value,37):
+                group.attrs.create(attr_name, attr_value, dtype="|S37")
+                return
             
-        def encode_attr(value, t):
-            return encode_ascii_utf8( decode_escape(value,t), t )        
+            if is_hex_str(attr_value,36):
+                group.attrs.create(attr_name, attr_value, dtype="|S36")
+            else:
+                group.attrs[attr_name] = attr_value 
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
@@ -82,7 +82,7 @@ def cram_to_fast5(cram_filename, output_dir):
              
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
                 for a in attr_dict.values():
-                    if a.value: write_hdf_attr( f, a.path, encode_attr(a.value,a.type), read_number ) 
+                    if a.value: write_hdf_attr( f, a.path, convert_type(a.value,a.type), read_number ) 
 
                 for tag_name, tag_val in read.get_tags():
                     if tag_name in RESERVED_TAGS: continue    
@@ -90,7 +90,7 @@ def cram_to_fast5(cram_filename, output_dir):
                     #print( "or_t={}, type={}, val={}".format(a.type, str(type(tag_val)), tag_val) )
 
                     if a.value != tag_val: 
-                        write_hdf_attr( f, a.path, encode_attr(tag_val,a.type), read_number )
+                        write_hdf_attr( f, a.path, convert_type(tag_val,a.type), read_number )
 
 def main():
     parser = argparse.ArgumentParser(description='CRAM to Fast5 conversion utility')
