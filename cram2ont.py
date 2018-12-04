@@ -8,6 +8,8 @@ import pysam
 import numpy
 import argparse
 
+DT_STR_VLEN = h5py.special_dtype(vlen=str)
+
 FILENAME_TAG = "X0"
 SIGNAL_TAG   = "zZ"
 RESERVED_TAGS = [SIGNAL_TAG, FILENAME_TAG]
@@ -65,8 +67,12 @@ def cram_to_fast5(cram_filename, output_dir):
             
         def write_hdf_attr(hdf5_file, full_attr_path, attr_value, read_number):
             full_attr_path = full_attr_path.replace("Read_XXX",  read_number)
-            group_name,_,attr_name =  full_attr_path.rpartition('/')                
-            group = hdf5_file.require_group(group_name)
+            group_name,_,attr_name =  full_attr_path.rpartition('/') 
+
+            try:
+                group = hdf5_file[group_name]
+            except KeyError:               
+                group = hdf5_file.create_group(group_name)
 
             if is_hex_str(attr_value,36):
                 group.attrs.create(attr_name, attr_value, dtype="|S36")
@@ -78,6 +84,10 @@ def cram_to_fast5(cram_filename, output_dir):
             read_number  = "Read_"+str(read.get_tag(read_number_tag))
              
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
+                fastq_lines = numpy.string_(
+                    "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
+                fastq_dset = f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
+
                 for a in attr_dict.values():
                     if a.value: write_hdf_attr( f, a.path, convert_type(a.value,a.type), read_number ) 
 
