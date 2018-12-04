@@ -42,19 +42,22 @@ global_dict_attributes = {}
 
 def convert_type(value):
     typ= {
+        "<class 'numpy.float16'>" : ('f16','f'),    
         "<class 'numpy.float32'>" : ('f32','f'),
         "<class 'numpy.float64'>" : ('f64','f'),               
         "<class 'numpy.int8'>"    : ('i8','i'),
+        "<class 'numpy.int16'>"   : ('i16','i'),
         "<class 'numpy.int32'>"   : ('i32','i'),
         "<class 'numpy.int64'>"   : ('i64','i'),  
-        "<class 'numpy.uint8'>"   : ('ui8','i'),
-        "<class 'numpy.uint32'>"  : ('ui32','i'),        
-        "<class 'numpy.uint64'>"  : ('ui64','i'),
-        "<class 'str'>"           : ('str',None),
-        "<class 'numpy.bytes_'>"  : ('bytes',None),
-        "<class 'bytes'>"         : ('bytes',None)
+        "<class 'numpy.uint8'>"   : ('u8','i'),
+        "<class 'numpy.uint16'>"  : ('u16','i'),        
+        "<class 'numpy.uint32'>"  : ('u32','i'),        
+        "<class 'numpy.uint64'>"  : ('u64','i'),
+        "<class 'str'>"           : ('U',None),
+        "<class 'numpy.bytes_'>"  : ('S',None),
+        "<class 'bytes'>"         : ('S',None)
     }[str(type(value))]
-    return ( value.decode('ascii') if typ[0]=='bytes' else value, typ[0], typ[1] )
+    return ( value.decode('ascii') if typ[0]=='S' else value, typ[0], typ[1] )
 
 def remove_read_number(attribute_path):
     if "/Reads/Read_" in attribute_path: 
@@ -105,7 +108,6 @@ def write_cram(fast5_files, cram_file, skipsignal):
         comments_list.append( "ONT:'{}':{} {}".format(key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
 
-        
             
     header = {  'HD': {'VN': '1.0'},
                 'SQ': [{'LN': 0, 'SN': '*'}],

@@ -14,16 +14,19 @@ RESERVED_TAGS = [SIGNAL_TAG, FILENAME_TAG]
 STR_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 def convert_type(val, typ):
+    if typ=='f16':  return numpy.float16(val)
     if typ=='f32':  return numpy.float32(val)
     if typ=='f64':  return numpy.float64(val)
     if typ=='i8':   return numpy.int8(val)
+    if typ=='i16':  return numpy.int16(val)
     if typ=='i32':	return numpy.int32(val)
     if typ=='i64':	return numpy.int64(val)
-    if typ=='ui8':	return numpy.uint8(val)
-    if typ=='ui32':	return numpy.uint32(val)
-    if typ=='ui64':	return numpy.uint64(val)
-    if typ=='str':  return str.encode(val).decode('unicode_escape').encode("utf-8")
-    if typ=='bytes':return str.encode(val).decode('unicode_escape').encode("ascii")
+    if typ=='u8':	return numpy.uint8(val)
+    if typ=='u16':	return numpy.uint16(val)
+    if typ=='u32':	return numpy.uint32(val)
+    if typ=='u64':	return numpy.uint64(val)
+    if typ=='U':    return str.encode(val).decode('unicode_escape').encode("utf-8")
+    if typ=='S':    return str.encode(val).decode('unicode_escape').encode("ascii")
     
 def cram_to_fast5(cram_filename, output_dir):
     class Attribute:
