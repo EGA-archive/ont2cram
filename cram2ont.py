@@ -86,7 +86,16 @@ def cram_to_fast5(cram_filename, output_dir):
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
                 fastq_lines = numpy.string_(
                     "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
-                fastq_dset = f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
+                f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
+
+                try:
+                    f.create_dataset( "/Raw/Reads/{}/Signal".format(read_number), 
+                        maxshape=(None,), 
+                        data=read.get_tag(SIGNAL_TAG), 
+                        compression="gzip", 
+                        chunks=(20000,),  
+                        compression_opts=1 )
+                except KeyError: pass
 
                 for a in attr_dict.values():
                     if a.value: write_hdf_attr( f, a.path, convert_type(a.value,a.type), read_number ) 
