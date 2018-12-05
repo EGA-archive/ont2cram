@@ -103,7 +103,8 @@ def write_cram(fast5_files, cram_file, skipsignal):
         tag.increment()
         if tag_and_val.endswith(LAST_TAG): sys.exit("Running out of Tag space : too many atributes in Fast5")
         
-        if is_shared_value(val[1], total_fast5_files):  tag_and_val += " CV:"+repr(value)
+        if is_shared_value(val[1], total_fast5_files) and "read_number" not in key:  
+            tag_and_val += " CV:"+repr(value)
 
         comments_list.append( "ONT:'{}':{} {}".format(key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
