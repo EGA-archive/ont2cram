@@ -17,9 +17,11 @@ USAGE:
 Implementation details:
 
 There is a mapping table in the header that maps ONT attributes to lowercase SAM aux tags eg:
-ONT:'Analyses/Basecall_1D_000/Configuration/calibration_strand/genome_name':bytes TG:b5 CV:'Lambda_3.6kb'
+ONT:'Analyses/Basecall_1D_000/Configuration/calibration_strand/genome_name':S TG:b5 CV:'Lambda_3.6kb'
 
 general format is : ONT:'<hdf_attribute_pathname>':<original_datatype> TG:<2_letter_lowecase_tag> CV:<constant_value>
+
+<original_datatype> is represented using Numpy datatype character codes ( https://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html#specifying-and-constructing-data-types )  
 
 CV part is optional - currently present only if >50% of fast5 files have this value. Thus, in current implementation CV is more like 'common value' than constant ( it can be overwritten on the read level for those reads that have different value ).
 
