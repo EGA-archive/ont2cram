@@ -85,19 +85,19 @@ def remove_read_number(attribute_path):
         return attribute_path
 
     
-def pre_process_group_attrs(name, group):
+def pre_process_group_attrs(node_path, hdf_node):
     global global_dict_attributes
 
-    name = remove_read_number( name )    
+    node_path = remove_read_number( node_path )    
 
-    if isinstance(group,h5py.Dataset):
-        #print(group.dtype.fields)
-        columns = group.dtype.fields.items() if group.dtype.fields else [('noname', str(group.dtype))]
-        process_dataset( name, columns )
-        #print( "name={}, dtype={}".format(name, group.dtype) )
+    if isinstance(hdf_node, h5py.Dataset):
+        #print(hdf_node.dtype.fields)
+        columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', str(hdf_node.dtype))]
+        process_dataset( node_path, columns )
+        #print( "name={}, dtype={}".format(name, hdf_node.dtype) )
            
-    for key, val in group.attrs.items():
-        full_key = name+'/'+key
+    for key, val in hdf_node.attrs.items():
+        full_key = node_path+'/'+key
 
         try:
             pair = global_dict_attributes[full_key]
@@ -150,10 +150,31 @@ def write_cram(fast5_files, cram_file, skipsignal):
             with h5py.File(filename,'r') as fast5:
                 a = pysam.AlignedSegment()
 
+                def get_tag_name_cv(hdf_full_path):
+                    pair = global_dict_attributes[hdf_full_path]
+                    assert( pair[1].startswith("TG:") )
+                    tag_name = pair[1][3:5]
+                    pos_CV = pair[1].find("CV:")
+                    val_CV = None if pos_CV==-1 else pair[1][pos_CV+3:]  
+                    return (tag_name,val_CV)              
+
+                def get_column( dset, col_name ):
+                    if col_name=="noname": return dset[()]
+                    return dset[col_name]
+                    
+                def process_dataset(hdf_path, dset, columns):
+                    #print( hdf_path+'/'+col_name )
+                    for column in columns:
+                        col_name   = column[0]
+                        tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
+                        col_array  = get_column(dset,col_name).tolist()
+                        a.set_tag(tag_name, b''.join(col_array) if type(col_array[0]) is bytes else col_array)
+
+                                        
                 signal_path = None
                 fastq_path  = None
 
-                def process_attrs( name, group ):
+                def process_attrs( name, group_or_dset ):
                 
                     nonlocal signal_path
                     nonlocal fastq_path
@@ -161,16 +182,15 @@ def write_cram(fast5_files, cram_file, skipsignal):
                     if name.endswith("BaseCalled_template/Fastq")       : fastq_path=name
 
                     name = remove_read_number( name )    
-                    
-                    for key, val in group.attrs.items():
-                        (value, hdf_type, tag_type) = convert_type(val)
-                        full_key = name+'/'+key
-                        pair = global_dict_attributes[full_key]
-                        assert( pair[1].startswith("TG:") )
 
-                        tag_name = pair[1][3:5]
-                        pos_CV = pair[1].find("CV:")
-                        val_CV = None if pos_CV==-1 else pair[1][pos_CV+3:]
+                    if isinstance(group_or_dset,h5py.Dataset):
+                        columns = group_or_dset.dtype.fields.items() if group_or_dset.dtype.fields else [('noname', None)]
+                        process_dataset( name, group_or_dset, columns )
+                        #print( "name={}, dtype={}".format(name, group.dtype) )
+                    
+                    for key, val in group_or_dset.attrs.items():
+                        (value, hdf_type, tag_type) = convert_type(val)
+                        tag_name, val_CV = get_tag_name_cv(name+'/'+key)
                         try:
                             if repr(value) != val_CV : a.set_tag(tag_name, value, tag_type)
                         except ValueError:
