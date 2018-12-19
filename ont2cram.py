@@ -37,41 +37,68 @@ class Tag:
             res = self.DIGITS[i] + res
         return res
 
-
 global_dict_attributes = {}
 
+def convert_type_map(typ):
+    if typ == "float16" : return ('f16','f')    
+    if typ == "float32" : return ('f32','f')
+    if typ == "float64" : return ('f64','f')
+    if typ == "int8"    : return ('i8','i')
+    if typ == "int16"   : return ('i16','i')
+    if typ == "int32"   : return ('i32','i')
+    if typ == "int64"   : return ('i64','i')
+    if typ == "uint8"   : return ('u8','i')
+    if typ == "uint16"  : return ('u16','i')
+    if typ == "uint32"  : return ('u32','i')
+    if typ == "uint64"  : return ('u64','i')
+    if typ == "str"     : return ('U',None)
+    if typ == "bytes_"  : return ('S',None)
+    if typ == "bytes"   : return ('S',None)
+    if typ.startswith("|S"): return ('S',None)
+    sys.exit("Unknown type:{}".format(typ))
+
 def convert_type(value):
-    typ= {
-        "<class 'numpy.float16'>" : ('f16','f'),    
-        "<class 'numpy.float32'>" : ('f32','f'),
-        "<class 'numpy.float64'>" : ('f64','f'),               
-        "<class 'numpy.int8'>"    : ('i8','i'),
-        "<class 'numpy.int16'>"   : ('i16','i'),
-        "<class 'numpy.int32'>"   : ('i32','i'),
-        "<class 'numpy.int64'>"   : ('i64','i'),  
-        "<class 'numpy.uint8'>"   : ('u8','i'),
-        "<class 'numpy.uint16'>"  : ('u16','i'),        
-        "<class 'numpy.uint32'>"  : ('u32','i'),        
-        "<class 'numpy.uint64'>"  : ('u64','i'),
-        "<class 'str'>"           : ('U',None),
-        "<class 'numpy.bytes_'>"  : ('S',None),
-        "<class 'bytes'>"         : ('S',None)
-    }[str(type(value))]
+    typ = convert_type_map( "bytes" if isinstance(value, bytes) else str(value.dtype) )
     return ( value.decode('ascii') if typ[0]=='S' else value, typ[0], typ[1] )
+
+
+def process_dataset(hdf_path, columns):
+    for column in columns:
+        col_name = column[0]
+        col_type_str = str(column[1][0]) if isinstance(column[1], tuple) else column[1]
+        col_type = convert_type_map(col_type_str)[0]
+
+        #print("{}->{}->{}".format(column[1],col_type_str,col_type))        
+        
+        full_key = hdf_path+'/'+col_name
+        try:
+            if global_dict_attributes[full_key][0] != col_type:
+                sys.exit("Column '{}' - different types in fast5 files: {} vs {}".format(full_key,global_dict_attributes[full_key][0],col_type) )
+        except KeyError:
+            global_dict_attributes[full_key] = [col_type, 0]  
+        
 
 def remove_read_number(attribute_path):
     if "/Reads/Read_" in attribute_path: 
         return re.sub(r"(^.*Read_)(\d+)(.*$)", r"\g<1>XXX\g<3>", attribute_path)
     else:
         return attribute_path
+
     
 def pre_process_group_attrs(name, group):
     global global_dict_attributes
 
     name = remove_read_number( name )    
+
+    if isinstance(group,h5py.Dataset):
+        #print(group.dtype.fields)
+        columns = group.dtype.fields.items() if group.dtype.fields else [('noname', str(group.dtype))]
+        process_dataset( name, columns )
+        #print( "name={}, dtype={}".format(name, group.dtype) )
            
     for key, val in group.attrs.items():
         full_key = name+'/'+key
+
         try:
             pair = global_dict_attributes[full_key]
             if( pair[0] == val ): pair[1] += 1
@@ -97,7 +124,10 @@ def write_cram(fast5_files, cram_file, skipsignal):
     comments_list = []
     tag = Tag(FIRST_TAG)
     for key,val in global_dict_attributes.items():
-        value,hdf_type,_ = convert_type(val[0])
+
+        is_column = True if val[1]==0 else False
+
+        value,hdf_type,_ = (None,val[0],None) if is_column else convert_type(val[0])
 
         tag_and_val = "TG:"+tag.get_name()
         tag.increment()
@@ -106,7 +136,7 @@ def write_cram(fast5_files, cram_file, skipsignal):
         if is_shared_value(val[1], total_fast5_files) and "read_number" not in key:  
             tag_and_val += " CV:"+repr(value)
 
-        comments_list.append( "ONT:'{}':{} {}".format(key, hdf_type, tag_and_val) )
+        comments_list.append( "{}:'{}':{} {}".format( "COL" if is_column else "ATR", key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
 
             
