@@ -68,8 +68,6 @@ def process_dataset(hdf_path, columns):
         col_type_str = str(column[1][0]) if isinstance(column[1], tuple) else column[1]
         col_type = convert_type_map(col_type_str)[0]
 
-        #print("{}->{}->{}".format(column[1],col_type_str,col_type))        
-        
         full_key = hdf_path+'/'+col_name
         try:
             if global_dict_attributes[full_key][0] != col_type:
@@ -90,11 +88,9 @@ def pre_process_group_attrs(node_path, hdf_node):
 
     node_path = remove_read_number( node_path )    
 
-    if isinstance(hdf_node, h5py.Dataset):
-        #print(hdf_node.dtype.fields)
+    if type(hdf_node) is h5py.Dataset:
         columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', str(hdf_node.dtype))]
         process_dataset( node_path, columns )
-        #print( "name={}, dtype={}".format(name, hdf_node.dtype) )
            
     for key, val in hdf_node.attrs.items():
         full_key = node_path+'/'+key
@@ -183,10 +179,9 @@ def write_cram(fast5_files, cram_file, skipsignal):
 
                     name = remove_read_number( name )    
 
-                    if isinstance(group_or_dset,h5py.Dataset):
+                    if type(group_or_dset) is h5py.Dataset:
                         columns = group_or_dset.dtype.fields.items() if group_or_dset.dtype.fields else [('noname', None)]
                         process_dataset( name, group_or_dset, columns )
-                        #print( "name={}, dtype={}".format(name, group.dtype) )
                     
                     for key, val in group_or_dset.attrs.items():
                         (value, hdf_type, tag_type) = convert_type(val)
