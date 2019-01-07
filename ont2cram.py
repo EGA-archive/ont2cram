@@ -9,9 +9,8 @@ import re
 
 FIRST_TAG    = "a0"
 LAST_TAG     = "zZ"
-SIGNAL_TAG   = "zZ"
 FILENAME_TAG = "X0"
-RESERVED_TAGS = [SIGNAL_TAG, FILENAME_TAG]
+RESERVED_TAGS = [FILENAME_TAG]
 
 class Tag:
     DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -54,15 +53,25 @@ def convert_type_map(typ):
     if typ == "str"     : return ('U',None)
     if typ == "bytes_"  : return ('S',None)
     if typ == "bytes"   : return ('S',None)
-    if typ.startswith("|S"): return ('S',None)
+    if typ.startswith("|S"): return (typ[1:],None)
+    if typ.startswith("|U"): return (typ[1:],None)
     sys.exit("Unknown type:{}".format(typ))
 
 def convert_type(value):
-    typ = convert_type_map( "bytes" if isinstance(value, bytes) else str(value.dtype) )
+    #print( f"val={value}, type={type(value).__name__}, dtype={value.dtype}")
+    typ = convert_type_map( type(value).__name__ ) 
+    #"bytes" if isinstance(value, bytes) else str(value.dtype) )
     return ( value.decode('ascii') if typ[0]=='S' else value, typ[0], typ[1] )
 
+def is_fastq_path(hdf_path):
+    return hdf_path.endswith("BaseCalled_template/Fastq")
+    
+def is_signal_path(hdf_path):
+    return "/Reads/Read" in hdf_path and hdf_path.endswith("Signal")    
 
 def process_dataset(hdf_path, columns):
+    if is_fastq_path(hdf_path): 
+        return
     for column in columns:
         col_name = column[0]
         col_type_str = str(column[1][0]) if isinstance(column[1], tuple) else column[1]
@@ -157,26 +166,23 @@ def write_cram(fast5_files, cram_file, skipsignal):
                 def get_column( dset, col_name ):
                     if col_name=="noname": return dset[()]
                     return dset[col_name]
+
+
                     
                 def process_dataset(hdf_path, dset, columns):
-                    #print( hdf_path+'/'+col_name )
+                    if is_signal_path(hdf_path) and skipsignal: return
+                    if is_fastq_path(hdf_path)                : return
                     for column in columns:
+                        #print(f"path={hdf_path}, col={column}")
                         col_name   = column[0]
                         tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
                         col_array  = get_column(dset,col_name).tolist()
                         a.set_tag(tag_name, b''.join(col_array) if type(col_array[0]) is bytes else col_array)
-
                                         
-                signal_path = None
                 fastq_path  = None
-
                 def process_attrs( name, group_or_dset ):
-                
-                    nonlocal signal_path
                     nonlocal fastq_path
-                    if "/Reads/Read" in name and name.endswith("Signal"): signal_path=name
-                    if name.endswith("BaseCalled_template/Fastq")       : fastq_path=name
-
+                    if is_fastq_path(name): fastq_path=name
                     name = remove_read_number( name )    
 
                     if type(group_or_dset) is h5py.Dataset:
@@ -193,12 +199,10 @@ def write_cram(fast5_files, cram_file, skipsignal):
                                                             
                 fast5.visititems( process_attrs )
 
-                if( not signal_path or not fastq_path ): 
-                    sys.exit("Bad Fast5: signal or fastq could not be found in '{}'".format(filename))
+                if not fastq_path: 
+                    sys.exit("Bad Fast5: Fastq dataset could not be found in '{}'".format(filename))
 
-                if not skipsignal: a.set_tag( SIGNAL_TAG, array.array('h',fast5[signal_path].value) )
                 a.set_tag( FILENAME_TAG, os.path.basename(filename) )
-                
                       
                 fastq_lines = fast5[fastq_path].value.splitlines()
                 
