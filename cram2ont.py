@@ -120,11 +120,15 @@ def cram_to_fast5(cram_filename, output_dir):
                         if dset_name.endswith("Fastq") and col_name=="noname": continue
                         if dset_name not in DSETS: DSETS[dset_name] = []
                         dset = DSETS[dset_name]
-                                                
-                        dset.append(
-                            numpy.array( 
-                                list(chunkstring(tag_val,int(a.type[1:]))) if a.type.startswith(('S','U')) else tag_val, 
-                                dtype=None if col_name=="noname" else [(col_name, convert_t(a.type))] 
+
+                        if col_name=="noname":
+                            print(f"path={a.path}, val={tag_val[:5]}")
+                            dset.append(tag_val)
+                        else:       
+                            dset.append(
+                                numpy.array( 
+                                    list(chunkstring(tag_val,int(a.type[1:]))) if a.type.startswith(('S','U')) else tag_val, 
+                                    dtype=[(col_name, convert_t(a.type))] 
                                 )
                              )
                 for dset_name,columns in DSETS.items():
