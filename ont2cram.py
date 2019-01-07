@@ -58,9 +58,7 @@ def convert_type_map(typ):
     sys.exit("Unknown type:{}".format(typ))
 
 def convert_type(value):
-    #print( f"val={value}, type={type(value).__name__}, dtype={value.dtype}")
     typ = convert_type_map( type(value).__name__ ) 
-    #"bytes" if isinstance(value, bytes) else str(value.dtype) )
     return ( value.decode('ascii') if typ[0]=='S' else value, typ[0], typ[1] )
 
 def is_fastq_path(hdf_path):
@@ -166,14 +164,11 @@ def write_cram(fast5_files, cram_file, skipsignal):
                 def get_column( dset, col_name ):
                     if col_name=="noname": return dset[()]
                     return dset[col_name]
-
-
                     
                 def process_dataset(hdf_path, dset, columns):
                     if is_signal_path(hdf_path) and skipsignal: return
                     if is_fastq_path(hdf_path)                : return
                     for column in columns:
-                        #print(f"path={hdf_path}, col={column}")
                         col_name   = column[0]
                         tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
                         col_array  = get_column(dset,col_name).tolist()

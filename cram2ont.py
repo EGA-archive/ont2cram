@@ -85,7 +85,6 @@ def cram_to_fast5(cram_filename, output_dir):
             return hdf_path.replace("Read_XXX",  read_number)       
             
         def write_hdf_attr(hdf5_file, full_attr_path, attr_value):
-            print(f"path={full_attr_path}, val={attr_value}, type={type(attr_value)}")
             group_name,_,attr_name =  full_attr_path.rpartition('/') 
             if attr_name=="noname": raise
             try:
@@ -94,9 +93,7 @@ def cram_to_fast5(cram_filename, output_dir):
                 group = hdf5_file.create_group(group_name)
 
             if is_hex_str(attr_value,36):
-            #if type(attr_value) is bytes:
                 group.attrs.create(attr_name, attr_value, dtype="|S36")
-                #group.attrs.create(attr_name, attr_value, dtype=typ)
             else:
                 group.attrs[attr_name] = attr_value 
 
@@ -123,10 +120,6 @@ def cram_to_fast5(cram_filename, output_dir):
                         if dset_name.endswith("Fastq") and col_name=="noname": continue
                         if dset_name not in DSETS: DSETS[dset_name] = []
                         dset = DSETS[dset_name]
-                        #if col_name=="noname": print( "dset={}, col={}, type={}, val={}".format(dset_name,col_name,a.type,tag_val[:11]) )
-                        #if a.type.startswith(('S','U')): print(tag_val)
-                        #aa = list(chunkstring(tag_val,int(a.type[1:]))) if a.type.startswith(('S','U')) else tag_val
-                        #print("fixed val=", aa[:11])
                                                 
                         dset.append(
                             numpy.array( 
@@ -135,26 +128,20 @@ def cram_to_fast5(cram_filename, output_dir):
                                 )
                              )
                 for dset_name,columns in DSETS.items():
-                    #f.create_dataset( dset_name, data=rfn.merge_arrays(columns, flatten=True, usemask=False) )
-                    #print(f"Saving dset={dset_name}, cols={columns}, len={len(columns)} \n\n") 
-                    a = rfn.merge_arrays(columns, flatten=True, usemask=False)
-                    f.create_dataset( dset_name, data=a )
+                    d = columns[0] if len(columns)==1 else rfn.merge_arrays(columns, flatten=True, usemask=False)
+                    f.create_dataset( dset_name, data=d )
                                         
                 # write constant values stored in cram header
                 for a in attr_dict.values():
                     if a.is_col: continue
-                    if a.value:
-                        print(f"_path={a.path}, val={a.value}, type={a.type}")
-                        write_hdf_attr( f, get_path(a.path,read_number), convert_type(a.value,a.type) )                     
+                    if a.value : write_hdf_attr( f, get_path(a.path,read_number), convert_type(a.value,a.type) )                     
 
                 # write tags stored in cram records                                                
                 for tag_name, tag_val in read.get_tags():
                     if tag_name in RESERVED_TAGS: continue    
                     a = attr_dict[tag_name]
                     if a.is_col: continue
-                    #print( "or_t={}, type={}, val={}".format(a.type, str(type(tag_val)), tag_val) )
                     if a.value != tag_val: 
-                        print(f"..path={a.path}, val={tag_val}, type={a.type}")
                         write_hdf_attr( f, get_path(a.path,read_number), convert_type(tag_val,a.type) )
 
 
