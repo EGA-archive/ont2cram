@@ -31,7 +31,7 @@ def convert_t(typ):
     if typ.startswith('S'):  return typ
 
 def convert_type(val, typ):
-    if typ.startswith('U'):    return str.encode(val).decode('unicode_escape').encode("utf-8")
+    if typ.startswith('U'):    return str.encode(val).decode('unicode_escape')
     if typ.startswith('S'):    return str.encode(val).decode('unicode_escape').encode("ascii")
     return convert_t(typ)(val)
 
@@ -85,6 +85,7 @@ def cram_to_fast5(cram_filename, output_dir):
             return hdf_path.replace("Read_XXX",  read_number)       
             
         def write_hdf_attr(hdf5_file, full_attr_path, attr_value):
+            print(f"path={full_attr_path}, val={attr_value}, type={type(attr_value)}")
             group_name,_,attr_name =  full_attr_path.rpartition('/') 
             if attr_name=="noname": raise
             try:
@@ -93,9 +94,13 @@ def cram_to_fast5(cram_filename, output_dir):
                 group = hdf5_file.create_group(group_name)
 
             if is_hex_str(attr_value,36):
+            #if type(attr_value) is bytes:
                 group.attrs.create(attr_name, attr_value, dtype="|S36")
+                #group.attrs.create(attr_name, attr_value, dtype=typ)
             else:
                 group.attrs[attr_name] = attr_value 
+
+            
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
@@ -138,7 +143,9 @@ def cram_to_fast5(cram_filename, output_dir):
                 # write constant values stored in cram header
                 for a in attr_dict.values():
                     if a.is_col: continue
-                    if a.value: write_hdf_attr( f, get_path(a.path,read_number), convert_type(a.value,a.type) )                     
+                    if a.value:
+                        print(f"_path={a.path}, val={a.value}, type={a.type}")
+                        write_hdf_attr( f, get_path(a.path,read_number), convert_type(a.value,a.type) )                     
 
                 # write tags stored in cram records                                                
                 for tag_name, tag_val in read.get_tags():
@@ -147,6 +154,7 @@ def cram_to_fast5(cram_filename, output_dir):
                     if a.is_col: continue
                     #print( "or_t={}, type={}, val={}".format(a.type, str(type(tag_val)), tag_val) )
                     if a.value != tag_val: 
+                        print(f"..path={a.path}, val={tag_val}, type={a.type}")
                         write_hdf_attr( f, get_path(a.path,read_number), convert_type(tag_val,a.type) )
 
 
