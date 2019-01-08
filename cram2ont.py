@@ -72,7 +72,7 @@ def cram_to_fast5(cram_filename, output_dir):
 
             try:
                 group.attrs.create(attr_name, attr_value, dtype=attr_type)
-            except TypeError:
+            except (TypeError, ValueError):
                 group.attrs[attr_name] = attr_value 
 
             
