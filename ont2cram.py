@@ -6,6 +6,7 @@ import tqdm
 import array
 import argparse
 import re
+import numpy
 
 FIRST_TAG    = "a0"
 LAST_TAG     = "zZ"
@@ -38,34 +39,36 @@ class Tag:
 
 global_dict_attributes = {}
 
-def convert_type_map(typ):
-    if typ == "float16" : return ('f16','f')    
-    if typ == "float32" : return ('f32','f')
-    if typ == "float64" : return ('f64','f')
-    if typ == "int8"    : return ('i8','i')
-    if typ == "int16"   : return ('i16','i')
-    if typ == "int32"   : return ('i32','i')
-    if typ == "int64"   : return ('i64','i')
-    if typ == "uint8"   : return ('u8','i')
-    if typ == "uint16"  : return ('u16','i')
-    if typ == "uint32"  : return ('u32','i')
-    if typ == "uint64"  : return ('u64','i')
-    if typ == "str"     : return ('U',None)
-    if typ == "bytes_"  : return ('S',None)
-    if typ == "bytes"   : return ('S',None)
-    if typ.startswith("|S"): return (typ[1:],None)
-    if typ.startswith("|U"): return (typ[1:],None)
-    sys.exit("Unknown type:{}".format(typ))
+def get_tag_type(np_typecode):
+    if np_typecode.startswith(('u','i')): return 'i'
+    if np_typecode.startswith( 'f'     ): return 'f'
+    if np_typecode.startswith(('S','U')): return None
+    sys.exit("Unknown type:{}".format(np_typecode))
+
+def convert_t(typ):
+    if typ.startswith(('=','>','<','|')): return typ[1:]
+    return typ
+
+def get_type(value):
+    try:
+        return value.dtype
+    except AttributeError:
+        return  numpy.dtype(type(value))
 
 def convert_type(value):
-    typ = convert_type_map( type(value).__name__ ) 
-    return ( value.decode('ascii') if typ[0]=='S' else value, typ[0], typ[1] )
+    typ = convert_t( get_type(value).str ) 
+    return ( value.decode('ascii') if typ[0]=='S' else value, typ )
 
 def is_fastq_path(hdf_path):
     return hdf_path.endswith("BaseCalled_template/Fastq")
     
 def is_signal_path(hdf_path):
-    return "/Reads/Read" in hdf_path and hdf_path.endswith("Signal")    
+    return "/Reads/Read" in hdf_path and hdf_path.endswith("Signal") 
+
+def types_equal(t1,t2):
+    if t1.startswith('S') and t2.startswith('S'): return true
+    if t1.startswith('U') and t2.startswith('U'): return true
+    return t1==t2 
 
 def process_dataset(hdf_path, columns):
     if is_fastq_path(hdf_path): 
@@ -73,11 +76,10 @@ def process_dataset(hdf_path, columns):
     for column in columns:
         col_name = column[0]
         col_type_str = str(column[1][0]) if isinstance(column[1], tuple) else column[1]
-        col_type = convert_type_map(col_type_str)[0]
-
+        col_type = convert_t(col_type_str)
         full_key = hdf_path+'/'+col_name
         try:
-            if global_dict_attributes[full_key][0] != col_type:
+            if not types_equal( global_dict_attributes[full_key][0], col_type ):
                 sys.exit("Column '{}' - different types in fast5 files: {} vs {}".format(full_key,global_dict_attributes[full_key][0],col_type) )
         except KeyError:
             global_dict_attributes[full_key] = [col_type, 0]  
@@ -96,15 +98,14 @@ def pre_process_group_attrs(node_path, hdf_node):
     node_path = remove_read_number( node_path )    
 
     if type(hdf_node) is h5py.Dataset:
-        columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', str(hdf_node.dtype))]
+        columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', hdf_node.dtype.str)]
         process_dataset( node_path, columns )
            
     for key, val in hdf_node.attrs.items():
         full_key = node_path+'/'+key
-
         try:
             pair = global_dict_attributes[full_key]
-            if( pair[0] == val ): pair[1] += 1
+            if pair[0] == val: pair[1] += 1
             global_dict_attributes[full_key] = pair
         except KeyError:
             global_dict_attributes[full_key] = [ val, 1 ]  
@@ -130,7 +131,7 @@ def write_cram(fast5_files, cram_file, skipsignal):
 
         is_column = True if val[1]==0 else False
 
-        value,hdf_type,_ = (None,val[0],None) if is_column else convert_type(val[0])
+        value,hdf_type = (None,val[0]) if is_column else convert_type(val[0])
 
         tag_and_val = "TG:"+tag.get_name()
         tag.increment()
@@ -185,10 +186,10 @@ def write_cram(fast5_files, cram_file, skipsignal):
                         process_dataset( name, group_or_dset, columns )
                     
                     for key, val in group_or_dset.attrs.items():
-                        (value, hdf_type, tag_type) = convert_type(val)
+                        value, hdf_type = convert_type(val)
                         tag_name, val_CV = get_tag_name_cv(name+'/'+key)
                         try:
-                            if repr(value) != val_CV : a.set_tag(tag_name, value, tag_type)
+                            if repr(value) != val_CV : a.set_tag( tag_name, value, get_tag_type(hdf_type) )
                         except ValueError:
                             sys.exit("Could not detemine tag type (val={}, hdf_type={})".format(value,hdf_type))
                                                             

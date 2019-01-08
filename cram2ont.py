@@ -5,8 +5,8 @@ import h5py
 import tqdm
 import shlex
 import pysam
-import numpy
 import argparse
+import numpy as np
 import numpy.lib.recfunctions as rfn
 
 DT_STR_VLEN = h5py.special_dtype(vlen=str)
@@ -15,35 +15,12 @@ FILENAME_TAG = "X0"
 RESERVED_TAGS = [FILENAME_TAG]
 STR_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
-def convert_t(typ):
-    if typ=='f16':  return numpy.float16
-    if typ=='f32':  return numpy.float32
-    if typ=='f64':  return numpy.float64
-    if typ=='i8':   return numpy.int8
-    if typ=='i16':  return numpy.int16
-    if typ=='i32':	return numpy.int32
-    if typ=='i64':	return numpy.int64
-    if typ=='u8':	return numpy.uint8
-    if typ=='u16':	return numpy.uint16
-    if typ=='u32':	return numpy.uint32
-    if typ=='u64':	return numpy.uint64
-    if typ.startswith('U'):  return typ
-    if typ.startswith('S'):  return typ
-
 def convert_type(val, typ):
+    print(f"val={val}, typ={typ}, type={type(val)}")
     if typ.startswith('U'):    return str.encode(val).decode('unicode_escape')
     if typ.startswith('S'):    return str.encode(val).decode('unicode_escape').encode("ascii")
-    return convert_t(typ)(val)
+    return np.asscalar( np.array((val)).astype(typ) )
 
-def join_struct_arrays(arrays):
-    if len(arrays)==1: return arrays[0]
-    newdtype = sum((a.dtype.descr for a in arrays), [])
-    newrecarray = numpy.empty(len(arrays[0]), dtype = newdtype)
-    for a in arrays:
-        for name in a.dtype.names:
-            newrecarray[name] = a[name]
-    return newrecarray
-    
 def cram_to_fast5(cram_filename, output_dir):
     class Attribute:
       path = ''
@@ -84,17 +61,18 @@ def cram_to_fast5(cram_filename, output_dir):
         def get_path(hdf_path, read_number):
             return hdf_path.replace("Read_XXX",  read_number)       
             
-        def write_hdf_attr(hdf5_file, full_attr_path, attr_value):
-            group_name,_,attr_name =  full_attr_path.rpartition('/') 
+        def write_hdf_attr(hdf5_file, attr_path, attr_value, attr_type):
+            #print(f"path={attr_path}, val={attr_value}, type={attr_type}")
+            group_name,_,attr_name =  attr_path.rpartition('/') 
             if attr_name=="noname": raise
             try:
                 group = hdf5_file[group_name]
             except KeyError:               
                 group = hdf5_file.create_group(group_name)
 
-            if is_hex_str(attr_value,36):
-                group.attrs.create(attr_name, attr_value, dtype="|S36")
-            else:
+            try:
+                group.attrs.create(attr_name, attr_value, dtype=attr_type)
+            except TypeError:
                 group.attrs[attr_name] = attr_value 
 
             
@@ -104,7 +82,7 @@ def cram_to_fast5(cram_filename, output_dir):
             read_number  = "Read_"+str(read.get_tag(read_number_tag))
              
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
-                fastq_lines = numpy.string_(
+                fastq_lines = np.string_(
                     "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
                 f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
 
@@ -122,13 +100,13 @@ def cram_to_fast5(cram_filename, output_dir):
                         dset = DSETS[dset_name]
 
                         if col_name=="noname":
-                            print(f"path={a.path}, val={tag_val[:5]}")
+                            #print(f"path={a.path}, val={tag_val[:5]}")
                             dset.append(tag_val)
                         else:       
                             dset.append(
-                                numpy.array( 
+                                np.array( 
                                     list(chunkstring(tag_val,int(a.type[1:]))) if a.type.startswith(('S','U')) else tag_val, 
-                                    dtype=[(col_name, convert_t(a.type))] 
+                                    dtype=[(col_name, a.type)] 
                                 )
                              )
                 for dset_name,columns in DSETS.items():
@@ -138,7 +116,7 @@ def cram_to_fast5(cram_filename, output_dir):
                 # write constant values stored in cram header
                 for a in attr_dict.values():
                     if a.is_col: continue
-                    if a.value : write_hdf_attr( f, get_path(a.path,read_number), convert_type(a.value,a.type) )                     
+                    if a.value : write_hdf_attr( f, get_path(a.path,read_number), a.value, a.type )                     
 
                 # write tags stored in cram records                                                
                 for tag_name, tag_val in read.get_tags():
@@ -146,7 +124,7 @@ def cram_to_fast5(cram_filename, output_dir):
                     a = attr_dict[tag_name]
                     if a.is_col: continue
                     if a.value != tag_val: 
-                        write_hdf_attr( f, get_path(a.path,read_number), convert_type(tag_val,a.type) )
+                        write_hdf_attr( f, get_path(a.path,read_number), tag_val, a.type )
 
 
 def main():
