@@ -16,7 +16,7 @@ RESERVED_TAGS = [FILENAME_TAG]
 STR_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 def convert_type(val, typ):
-    print(f"val={val}, typ={typ}, type={type(val)}")
+    #print(f"val={val}, typ={typ}, type={type(val)}")
     if typ.startswith('U'):    return str.encode(val).decode('unicode_escape')
     if typ.startswith('S'):    return str.encode(val).decode('unicode_escape').encode("ascii")
     return np.asscalar( np.array((val)).astype(typ) )
@@ -73,9 +73,7 @@ def cram_to_fast5(cram_filename, output_dir):
             try:
                 group.attrs.create(attr_name, attr_value, dtype=attr_type)
             except (TypeError, ValueError):
-                group.attrs[attr_name] = attr_value 
-
-            
+                group.attrs[attr_name] = convert_type(attr_value,attr_type)
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
