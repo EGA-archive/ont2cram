@@ -66,8 +66,8 @@ def is_signal_path(hdf_path):
     return "/Reads/Read" in hdf_path and hdf_path.endswith("Signal") 
 
 def types_equal(t1,t2):
-    if t1.startswith('S') and t2.startswith('S'): return true
-    if t1.startswith('U') and t2.startswith('U'): return true
+    if t1.startswith('S') and t2.startswith('S'): return True
+    if t1.startswith('U') and t2.startswith('U'): return True
     return t1==t2 
 
 def process_dataset(hdf_path, columns):
