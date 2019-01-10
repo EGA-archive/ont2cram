@@ -16,23 +16,22 @@ USAGE:
 
 Implementation details:
 
-There is a mapping table in the header that maps ONT attributes to lowercase SAM aux tags eg:
-ONT:'Analyses/Basecall_1D_000/Configuration/calibration_strand/genome_name':S TG:b5 CV:'Lambda_3.6kb'
+There is a mapping table in the header that maps ONT attributes/dataset columns to lowercase SAM aux tags eg:
+ATR:'Analyses/Basecall_1D_000/Configuration/calibration_strand/genome_name':S TG:b5 CV:'Lambda_3.6kb'
 
-general format is : ONT:'<hdf_attribute_pathname>':<original_datatype> TG:<2_letter_lowecase_tag> CV:<constant_value>
+general format is : [ATR|COL]:'<hdf_attribute_or_column_pathname>':<original_datatype> TG:<2_letter_lowecase_tag> CV:<constant_value>
+
+ATR - mapping between hdf group/dataset attribute and SAM aux tag, COL - mapping between hdf dataset column and SAM aux tag
 
 <original_datatype> is represented using Numpy datatype character codes ( https://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html#specifying-and-constructing-data-types )  
 
-CV part is optional - currently present only if >50% of fast5 files have this value. Thus, in current implementation CV is more like 'common value' than constant ( it can be overwritten on the read level for those reads that have different value ).
+CV part is optional - currently present only for attributes(skipped for dataset columns) and only if >50% of fast5 files have this value. Thus, in current implementation CV is more like 'common value' than constant ( it can be overwritten on the read level for those reads that have different value ).
 
 Tag names are generated sequentially ( a0,a1....aa.....az,aA...aZ...zZ ). If 'zZ' is reached the program exists with an error. 
 
-Signal is stored in 'zZ' tag ( "--skipsignal" flag allows to skip raw signal and produce _much_ smaller Crams )
+HDF datasets are stored in Cram as separate columns - each column in a separate tag
 
-Events and other auxiliary datasets are currently not stored - TODO item(not clear how to store them - each column in a separate tag?) 
-
-Some string values in HDF attributes have line breaks inside - is it valid for Cram tags or better to remove them?
-
+"--skipsignal" flag allows to skip raw signal(and Events dataset which is derived from Signal) and produce _much_ smaller Crams
 
 ## cram2ont ( reverse converter )
 
@@ -49,3 +48,8 @@ Arguments:
   -o OUTPUTDIR, --outputdir OUTPUTDIR
   
     Output directory for generated Fast5 files
+
+Open questions/problems:
+* HDF has sveral datatypes for strings : Null-padded/Null-terminated, Variable length/Fixed length.The restored type is not always identical to the source e.g. "37-byte null-terminated ASCII string" vs "36-byte null-padded ASCII string"(the content is identical "00730cca-2ff9-4c03-b071-d219ee0a19b8")
+* Does it make sense to store HDF layout info(dataset compression method/chunkig settings/dataset max dimensions)?
+* Some string values in HDF attributes have line breaks inside - is it valid for Cram tags or better to remove them?
