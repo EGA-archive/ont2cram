@@ -65,6 +65,9 @@ def is_fastq_path(hdf_path):
 def is_signal_path(hdf_path):
     return "/Reads/Read" in hdf_path and hdf_path.endswith("Signal") 
 
+def is_events_path(hdf_path):
+    return hdf_path.endswith("BaseCalled_template/Events")
+
 def types_equal(t1,t2):
     if t1.startswith('S') and t2.startswith('S'): return True
     if t1.startswith('U') and t2.startswith('U'): return True
@@ -168,6 +171,7 @@ def write_cram(fast5_files, cram_file, skipsignal):
                     
                 def process_dataset(hdf_path, dset, columns):
                     if is_signal_path(hdf_path) and skipsignal: return
+                    if is_events_path(hdf_path) and skipsignal: return
                     if is_fastq_path(hdf_path)                : return
                     for column in columns:
                         col_name   = column[0]
