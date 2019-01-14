@@ -63,10 +63,10 @@ def is_fastq_path(hdf_path):
     return hdf_path.endswith("BaseCalled_template/Fastq")
     
 def is_signal_path(hdf_path):
-    return "/Reads/Read" in hdf_path and hdf_path.endswith("Signal") 
+    return "/Reads/Read" in hdf_path and hdf_path.endswith("/Signal") 
 
 def is_events_path(hdf_path):
-    return hdf_path.endswith("BaseCalled_template/Events")
+    return hdf_path.endswith("/Events")
 
 def types_equal(t1,t2):
     if t1.startswith('S') and t2.startswith('S'): return True
