@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import sys
 import h5py
@@ -199,15 +200,13 @@ def write_cram(fast5_files, cram_file, skipsignal):
                                                             
                 fast5.visititems( process_attrs )
 
-                if not fastq_path: 
-                    sys.exit("Bad Fast5: Fastq dataset could not be found in '{}'".format(filename))
-
                 a.set_tag( FILENAME_TAG, os.path.basename(filename) )
-                      
-                fastq_lines = fast5[fastq_path].value.splitlines()
-                
-                a.query_name = fastq_lines[0]
-                a.query_sequence=fastq_lines[1]
+
+                if fastq_path: 
+                    fastq_lines = fast5[fastq_path].value.splitlines()                
+                    a.query_name = fastq_lines[0]
+                    a.query_sequence=fastq_lines[1]
+                    a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
                 a.flag = 4
                 a.reference_id = 0
                 a.reference_start = 0
@@ -216,7 +215,6 @@ def write_cram(fast5_files, cram_file, skipsignal):
                 a.next_reference_id = 0
                 a.next_reference_start=0
                 a.template_length=0
-                a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
 
                 outf.write(a)
 
