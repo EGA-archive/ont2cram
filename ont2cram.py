@@ -126,8 +126,14 @@ def get_list_of_fast5_files( dir ):
 def is_shared_value(value, total_fast5_files):
     return value > total_fast5_files//2
 
+def read_fastq_from_file(pathname):
+    fname = os.path.splitext(pathname)[0] + ".fastq"
+    with open(fname) as f:
+        lines = f.read().splitlines()
+        if len(lines) != 4: sys.exit(f"Invalid FASTQ file: '{fname}'")
+        return lines
 
-def write_cram(fast5_files, cram_file, skipsignal):
+def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
     total_fast5_files = len(fast5_files)
     comments_list = []
     tag = Tag(FIRST_TAG)
@@ -202,11 +208,13 @@ def write_cram(fast5_files, cram_file, skipsignal):
 
                 a.set_tag( FILENAME_TAG, os.path.basename(filename) )
 
-                if fastq_path: 
-                    fastq_lines = fast5[fastq_path].value.splitlines()                
-                    a.query_name = fastq_lines[0]
-                    a.query_sequence=fastq_lines[1]
-                    a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
+                fastq_lines = ["nofastq",None,None,None]
+                if fastq_path: fastq_lines = fast5[fastq_path].value.splitlines()                
+                if fastq_dir:  fastq_lines = read_fastq_from_file( os.path.join(fastq_dir,os.path.basename(filename)) )                
+
+                a.query_name = fastq_lines[0]
+                a.query_sequence=fastq_lines[1]
+                a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
                 a.flag = 4
                 a.reference_id = 0
                 a.reference_start = 0
@@ -218,15 +226,20 @@ def write_cram(fast5_files, cram_file, skipsignal):
 
                 outf.write(a)
 
+def exit_if_not_dir(d):
+    if not os.path.isdir(d): sys.exit( 'Not dir: %s' % d )
+
 def main():
     parser = argparse.ArgumentParser(description='Fast5 to CRAM conversion utility')
     parser.add_argument('-i','--inputdir', help='Input directory containing Fast5 files', required=True)
     parser.add_argument('-o','--outputfile', help='Output CRAM filename', required=True)
+    parser.add_argument('-f','--fastqdir', help='Input directory containing FASTQ files', required=False)
     parser.add_argument('-s','--skipsignal', help='Skips the raw signal data', action='store_true')
     args = parser.parse_args()
 
-    if not os.path.isdir(args.inputdir): sys.exit( 'Not dir: %s' % args.inputdir )
-
+    exit_if_not_dir(args.inputdir)
+    if args.fastqdir: exit_if_not_dir(args.fastqdir)
+    
     fast5_files =  get_list_of_fast5_files( args.inputdir )
 
     print("Phase 1 of 2 : pre-processing Fast5 files...")
@@ -234,7 +247,7 @@ def main():
         walk_fast5( f, pre_process_group_attrs )
 
     print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
-    write_cram( fast5_files, args.outputfile, args.skipsignal )
+    write_cram( fast5_files, args.outputfile, args.skipsignal, args.fastqdir )
 
 if __name__ == "__main__":
     main()
