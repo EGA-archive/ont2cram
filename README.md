@@ -17,7 +17,7 @@ python ont2cram.py -i INPUTDIR -o OUTPUTFILE [-f FASTQDIR] [-s]
 Implementation details:
 
 There is a mapping table in the header that maps ONT attributes/dataset columns to lowercase SAM aux tags eg:
-**ATR:'Analyses/Basecall_1D_000/Configuration/calibration_strand/genome_name':S TG:b5 CV:'Lambda_3.6kb'
+**ATR:'Analyses/Basecall_1D_000/Configuration/calibration_strand/genome_name':S TG:b5 CV:'Lambda_3.6kb'**
 
 general format is : 
 ~~~
