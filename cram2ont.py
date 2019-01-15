@@ -81,9 +81,10 @@ def cram_to_fast5(cram_filename, output_dir):
             read_number  = "Read_"+str(read.get_tag(read_number_tag))
              
             with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
-                fastq_lines = np.string_(
-                    "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
-                f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
+                if read.query_name != "nofastq":
+                    fastq_lines = np.string_(
+                        "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
+                    f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
 
                 def chunkstring(string, length):
                     return (string[0+i:length+i] for i in range(0, len(string), length))
