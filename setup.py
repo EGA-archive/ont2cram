@@ -19,5 +19,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3"
     ],    
-    py_modules=["ont2cram","cram2ont"]
+    py_modules=["ont2cram","cram2ont"],
+    scripts=["ont2cram","cram2ont"]
 )
