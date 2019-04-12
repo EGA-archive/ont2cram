@@ -62,6 +62,7 @@ cram2ont -i INPUTFILE [-o OUTPUTDIR]
 If output directory is not specified generated files will be saved to the current folder.
 
 Open questions/problems:
+* Multi-read Fast5 are not supported ( yet )
 * HDF has sveral datatypes for strings : Null-padded/Null-terminated, Variable length/Fixed length.The restored type is not always identical to the source e.g. "37-byte null-terminated ASCII string" vs "36-byte null-padded ASCII string"(the content is identical "00730cca-2ff9-4c03-b071-d219ee0a19b8")
 * Does it make sense to store HDF layout info(dataset compression method/chunkig settings/dataset max dimensions)?
 * Some string values in HDF attributes have line breaks inside - is it valid for Cram tags or better to remove them?
