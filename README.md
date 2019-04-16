@@ -66,3 +66,4 @@ Open questions/problems:
 * HDF has sveral datatypes for strings : Null-padded/Null-terminated, Variable length/Fixed length.The restored type is not always identical to the source e.g. "37-byte null-terminated ASCII string" vs "36-byte null-padded ASCII string"(the content is identical "00730cca-2ff9-4c03-b071-d219ee0a19b8")
 * Does it make sense to store HDF layout info(dataset compression method/chunkig settings/dataset max dimensions)?
 * Some string values in HDF attributes have line breaks inside - is it valid for Cram tags or better to remove them?
+* How to implement "--fastqdir" flag for multi-read fast5 ? Each FASTQ sequence in a separate file or combined? How to establish correspondance between individual reads inside multi-read fast5 and it's external fastq sequence (currently done by file name for single-read fast5)?
