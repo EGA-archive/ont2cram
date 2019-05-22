@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os
 import sys
 import h5py
@@ -130,7 +130,7 @@ def read_fastq_from_file(pathname):
     fname = os.path.splitext(pathname)[0] + ".fastq"
     with open(fname) as f:
         lines = f.read().splitlines()
-        if len(lines) != 4: sys.exit(f"Invalid FASTQ file: '{fname}'")
+        if len(lines) != 4: sys.exit("Invalid FASTQ file: '{}'".format(fname))
         return lines
 
 def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
