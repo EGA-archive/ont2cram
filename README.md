@@ -6,7 +6,7 @@ INSTALLATION:
 ~~~
 git clone https://github.com/EGA-archive/ont2cram
 cd ont2cram
-python setup.py install
+python3 setup.py install
 ~~~
 
 USAGE: 
