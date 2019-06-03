@@ -8,11 +8,12 @@ import array
 import argparse
 import re
 import numpy
+from functools import partial
 
 FIRST_TAG    = "a0"
 LAST_TAG     = "zZ"
-FILENAME_TAG = "X0"
-RESERVED_TAGS = [FILENAME_TAG]
+READ_NUM_TAG = "X0"
+FILENAME_TAG = "X1"
 
 class Tag:
     DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -64,7 +65,7 @@ def is_fastq_path(hdf_path):
     return hdf_path.endswith("BaseCalled_template/Fastq")
     
 def is_signal_path(hdf_path):
-    return "/Reads/Read" in hdf_path and hdf_path.endswith("/Signal") 
+    return "/Raw" in hdf_path and hdf_path.endswith("/Signal") 
 
 def is_events_path(hdf_path):
     return hdf_path.endswith("/Events")
@@ -90,16 +91,19 @@ def process_dataset(hdf_path, columns):
         
 
 def remove_read_number(attribute_path):
-    if "/Reads/Read_" in attribute_path: 
-        return re.sub(r"(^.*Read_)(\d+)(.*$)", r"\g<1>XXX\g<3>", attribute_path)
+    if not "/read_" in attribute_path.lower(): 
+    	return attribute_path, None
+
+    match = re.match(r"(^.*\/read_)({?\w{8}-?\w{4}-?\w{4}-?\w{4}-?\w{12}}?|\d+)(.*$)", attribute_path, re.I)
+    if match:
+    	return match.group(1)+"XXX"+match.group(3), match.group(2) 
     else:
-        return attribute_path
-
-    
-def pre_process_group_attrs(node_path, hdf_node):
+    	return attribute_path, None   	
+   
+def pre_process_group_attrs(_, hdf_node):
     global global_dict_attributes
-
-    node_path = remove_read_number( node_path )    
+    node_path = hdf_node.name
+    node_path,_ = remove_read_number( node_path )
 
     if type(hdf_node) is h5py.Dataset:
         columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', hdf_node.dtype.str)]
@@ -159,12 +163,14 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                 'CO': comments_list 
                }
 
+    
+
     with pysam.AlignmentFile( cram_file, "wc", header=header, format_options=[b"no_ref=1"] ) as outf:
+        #print([k for k in global_dict_attributes.keys() if "Raw" in k] )
         for filename in tqdm.tqdm(fast5_files): 
             with h5py.File(filename,'r') as fast5:
-                a = pysam.AlignedSegment()
 
-                def get_tag_name_cv(hdf_full_path):
+                def get_tag_name_cv( hdf_full_path ):
                     pair = global_dict_attributes[hdf_full_path]
                     assert( pair[1].startswith("TG:") )
                     tag_name = pair[1][3:5]
@@ -176,55 +182,66 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     if col_name=="noname": return dset[()]
                     return dset[col_name]
                     
-                def process_dataset(hdf_path, dset, columns):
+                def process_dataset( cram_seg, hdf_path, dset, columns ):
                     if is_signal_path(hdf_path) and skipsignal: return
                     if is_events_path(hdf_path) and skipsignal: return
                     if is_fastq_path(hdf_path)                : return
                     for column in columns:
                         col_name   = column[0]
                         tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
-                        col_array  = get_column(dset,col_name).tolist()
-                        a.set_tag(tag_name, b''.join(col_array) if type(col_array[0]) is bytes else col_array)
+                        col = get_column(dset,col_name)
+                        col_values = col.tolist() if type(col) is numpy.ndarray else col
+                        #print("path="+hdf_path+" col_name=" + col_name)
+                        #print("zzz="+str(zzz)+", type=" +str(type(zzz)) )                        
+                        cram_seg.set_tag(tag_name, b''.join(col_values) if type(col_values[0]) is bytes else col_values)
                                         
                 fastq_path  = None
-                def process_attrs( name, group_or_dset ):
+                def process_attrs( cram_seg, _, group_or_dset ):
                     nonlocal fastq_path
+                    name = group_or_dset.name
+                    
                     if is_fastq_path(name): fastq_path=name
-                    name = remove_read_number( name )    
+                    name,read_num = remove_read_number( name ) 
+                    if read_num: cram_seg.set_tag( READ_NUM_TAG, read_num )
 
                     if type(group_or_dset) is h5py.Dataset:
                         columns = group_or_dset.dtype.fields.items() if group_or_dset.dtype.fields else [('noname', None)]
-                        process_dataset( name, group_or_dset, columns )
+                        process_dataset( cram_seg, name, group_or_dset, columns )
                     
                     for key, val in group_or_dset.attrs.items():
                         value, hdf_type = convert_type(val)
                         tag_name, val_CV = get_tag_name_cv(name+'/'+key)
                         try:
-                            if repr(value) != val_CV : a.set_tag( tag_name, value, get_tag_type(hdf_type) )
+                            if repr(value) != val_CV : cram_seg.set_tag( tag_name, value, get_tag_type(hdf_type) )
                         except ValueError:
                             sys.exit("Could not detemine tag type (val={}, hdf_type={})".format(value,hdf_type))
-                                                            
-                fast5.visititems( process_attrs )
+                            
+                read_groups = [fast5]
+                if next(iter(fast5)).startswith("read_"):
+                	read_groups = [ fast5[k] for k in fast5.keys()]
 
-                a.set_tag( FILENAME_TAG, os.path.basename(filename) )
+                for read_group in read_groups:
+                	a_s = pysam.AlignedSegment()
+                	a_s.set_tag( FILENAME_TAG, os.path.basename(filename) )
+                	read_group.visititems( partial(process_attrs,a_s) )
 
-                fastq_lines = ["nofastq",None,None,None]
-                if fastq_path: fastq_lines = fast5[fastq_path].value.splitlines()                
-                if fastq_dir:  fastq_lines = read_fastq_from_file( os.path.join(fastq_dir,os.path.basename(filename)) )                
+                	fastq_lines = ["nofastq",None,None,None]
+                	if fastq_path: fastq_lines = read_group[fastq_path].value.splitlines()                
+                	if fastq_dir:  fastq_lines = read_fastq_from_file( os.path.join(fastq_dir,os.path.basename(filename)) )                
 
-                a.query_name = fastq_lines[0]
-                a.query_sequence=fastq_lines[1]
-                a.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
-                a.flag = 4
-                a.reference_id = 0
-                a.reference_start = 0
-                a.mapping_quality = 0
-                a.cigar = ()
-                a.next_reference_id = 0
-                a.next_reference_start=0
-                a.template_length=0
+                	a_s.query_name = fastq_lines[0]
+                	a_s.query_sequence=fastq_lines[1]
+                	a_s.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
+                	a_s.flag = 4
+                	a_s.reference_id = 0
+                	a_s.reference_start = 0
+                	a_s.mapping_quality = 0
+                	a_s.cigar = ()
+                	a_s.next_reference_id = 0
+                	a_s.next_reference_start=0
+                	a_s.template_length=0
 
-                outf.write(a)
+                	outf.write(a_s)
 
 def exit_if_not_dir(d):
     if not os.path.isdir(d): sys.exit( 'Not dir: %s' % d )

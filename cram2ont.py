@@ -12,8 +12,10 @@ import numpy.lib.recfunctions as rfn
 
 DT_STR_VLEN = h5py.special_dtype(vlen=str)
 
-FILENAME_TAG = "X0"
-RESERVED_TAGS = [FILENAME_TAG]
+READ_NUM_TAG = "X0"
+FILENAME_TAG = "X1"
+RESERVED_TAGS = [READ_NUM_TAG, FILENAME_TAG]
+
 STR_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 def convert_type(val, typ):
@@ -31,7 +33,6 @@ def cram_to_fast5(cram_filename, output_dir):
 
     attr_dict = {}    
     with pysam.AlignmentFile(cram_filename, "rc") as samfile:
-        read_number_tag = None
         for comment in samfile.header["CO"]:
             if not comment.startswith(("ATR:","COL:")): continue
 
@@ -48,19 +49,13 @@ def cram_to_fast5(cram_filename, output_dir):
             
             attr_dict[tag]=a
 
-            if a.path == "Raw/Reads/Read_XXX/read_number":
-                read_number_tag = tag
-        
-        if not read_number_tag:
-            sys.exit("Could not find read_number")
-
         def is_hex_str( obj, expected_len, is_null_term=False ):
             bytes_to_remove_end = 1 if is_null_term else 0
             return isinstance(obj,bytes) and len(obj)==expected_len and (not is_null_term or obj[-1:]==0) \
                    and STR_HEX_PATTERN.match(obj[:expected_len-bytes_to_remove_end].decode())
 
         def get_path(hdf_path, read_number):
-            return hdf_path.replace("Read_XXX",  read_number)       
+            return hdf_path.replace("Read_XXX",read_number).replace("read_XXX",read_number)       
             
         def write_hdf_attr(hdf5_file, attr_path, attr_value, attr_type):
             #print(f"path={attr_path}, val={attr_value}, type={attr_type}")
@@ -78,9 +73,9 @@ def cram_to_fast5(cram_filename, output_dir):
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
-            read_number  = "Read_"+str(read.get_tag(read_number_tag))
+            read_number  = "read_"+str(read.get_tag(READ_NUM_TAG))
              
-            with h5py.File( os.path.join(output_dir,fast5_filename), "w" ) as f:
+            with h5py.File( os.path.join(output_dir,fast5_filename), "a" ) as f:
                 if read.query_name != "nofastq":
                     fastq_lines = np.string_(
                         "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
