@@ -256,7 +256,20 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
 def exit_if_not_dir(d):
     if not os.path.isdir(d): sys.exit( 'Not dir: %s' % d )
 
-def main():
+def main(input_dir, fastq_dir, output_file, skip_signal):
+    exit_if_not_dir(input_dir)
+    if fastq_dir: exit_if_not_dir(fastq_dir)
+    
+    fast5_files = get_list_of_fast5_files( input_dir )
+
+    print("Phase 1 of 2 : pre-processing Fast5 files...")
+    for f in tqdm.tqdm(fast5_files): 
+        walk_fast5( f, pre_process_group_attrs )
+
+    print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
+    write_cram( fast5_files, output_file, skip_signal, fastq_dir )
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Fast5 to CRAM conversion utility')
     parser.add_argument('-i','--inputdir', help='Input directory containing Fast5 files', required=True)
     parser.add_argument('-o','--outputfile', help='Output CRAM filename', required=True)
@@ -264,17 +277,4 @@ def main():
     parser.add_argument('-s','--skipsignal', help='Skips the raw signal data', action='store_true')
     args = parser.parse_args()
 
-    exit_if_not_dir(args.inputdir)
-    if args.fastqdir: exit_if_not_dir(args.fastqdir)
-    
-    fast5_files =  get_list_of_fast5_files( args.inputdir )
-
-    print("Phase 1 of 2 : pre-processing Fast5 files...")
-    for f in tqdm.tqdm(fast5_files): 
-        walk_fast5( f, pre_process_group_attrs )
-
-    print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
-    write_cram( fast5_files, args.outputfile, args.skipsignal, args.fastqdir )
-
-if __name__ == "__main__":
-    main()
+    main(args.inputdir, args.fastqdir, args.outputfile, args.skipsignal)
