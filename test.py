@@ -11,7 +11,6 @@ def h5dump_all_files_in_dir(input_dir, output_dir):
         dump_path = os.path.join(output_dir,f+".txt") 
     with open(dump_path,'w') as outfile:
         subprocess.call(["h5dump",file_path], stdout=outfile)
-
     
 
 class Ont2CramTests(unittest.TestCase):
@@ -29,13 +28,16 @@ class Ont2CramTests(unittest.TestCase):
     def assert2FilesEqual(self, path1, path2):
         with open(path1) as f1:
             with open(path2) as f2:
-                self.assertEquals( [row for row in f1] ,  [row for row in f2] )
+                for line1, line2 in zip(f1,f2):
+                    self.assertEqual(line1,line2)
+                    #self.assertMultiLineEqual( [row for row in f1] ,  [row for row in f2] )
                    
     def assert2DirsEqual(self, dir1, dir2):
         dir1_files = os.listdir(dir1)
         dir2_files = os.listdir(dir2)
         self.assertTrue( len(dir1)==len(dir2) )
-        for f in dir1_files: self.assert2FilesEqual( os.path.join(dir1,f), os.path.join(dir2,f) )                 
+        for f in dir1_files: 
+            self.assert2FilesEqual( os.path.join(dir1,f), os.path.join(dir2,f) )                 
 
     def test_round_trip(self):
         cram_path = tempfile.mkstemp()[1]        
