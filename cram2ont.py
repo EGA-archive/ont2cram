@@ -24,7 +24,17 @@ def convert_type(val, typ):
     if typ.startswith('S'):    return str.encode(val).decode('unicode_escape').encode("ascii")
     return np.asscalar( np.array((val)).astype(typ) )
 
+def check_destination_exists(cram_filename, output_dir):
+	with pysam.AlignmentFile(cram_filename, "rc") as samfile:
+		for read in samfile.fetch(until_eof=True):
+			fast5_filename = read.get_tag(FILENAME_TAG)
+			fast5_pathname = os.path.join(output_dir,fast5_filename)
+			if os.path.exists(fast5_pathname):
+				sys.exit( "Destination file already exists:{}".format(fast5_pathname) )
+
 def cram_to_fast5(cram_filename, output_dir):
+    check_destination_exists(cram_filename, output_dir)
+    	
     class Attribute:
       path = ''
       type = ''
@@ -73,8 +83,8 @@ def cram_to_fast5(cram_filename, output_dir):
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
-            read_number  = "read_"+str(read.get_tag(READ_NUM_TAG))
-             
+            read_number  = "read_"+str(read.get_tag(READ_NUM_TAG))                        
+            
             with h5py.File( os.path.join(output_dir,fast5_filename), "a" ) as f:
                 if read.query_name != "nofastq":
                     fastq_lines = np.string_(

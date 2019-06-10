@@ -59,7 +59,7 @@ def get_type(value):
 
 def convert_type(value):
     typ = convert_t( get_type(value).str ) 
-    return ( value.decode('ascii') if typ[0]=='S' else value, typ )
+    return ( value.decode('ascii') if typ[0]=='S' else value, typ[:1] if typ.startswith(('U','S')) else typ )
 
 def is_fastq_path(hdf_path):
     return hdf_path.endswith("BaseCalled_template/Fastq")
@@ -116,7 +116,7 @@ def pre_process_group_attrs(_, hdf_node):
             if pair[0] == val: pair[1] += 1
             global_dict_attributes[full_key] = pair
         except KeyError:
-            global_dict_attributes[full_key] = [ val, 1 ]  
+            global_dict_attributes[full_key] = [ val, 1 ]
 
 def walk_fast5( filename, walk_group_function ):
     with h5py.File(filename,'r') as f:
@@ -161,9 +161,7 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
     header = {  'HD': {'VN': '1.0'},
                 'SQ': [{'LN': 0, 'SN': '*'}],
                 'CO': comments_list 
-               }
-
-    
+               }    
 
     with pysam.AlignmentFile( cram_file, "wc", header=header, format_options=[b"no_ref=1"] ) as outf:
         #print([k for k in global_dict_attributes.keys() if "Raw" in k] )
@@ -190,16 +188,27 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                         col_name   = column[0]
                         tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
                         col = get_column(dset,col_name)
+                        #print("col_type={}".format(type(col)))
                         col_values = col.tolist() if type(col) is numpy.ndarray else col
-                        #print("path="+hdf_path+" col_name=" + col_name)
-                        #print("zzz="+str(zzz)+", type=" +str(type(zzz)) )                        
-                        cram_seg.set_tag(tag_name, b''.join(col_values) if type(col_values[0]) is bytes else col_values)
+                        #print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}")
+                        #print("len={}".format(len(col_values)))
+
+                        #cram_seg.set_tag(tag_name, )
+                        #tag_val = b''.join(col_values) if type(col) is numpy.bytes_ else col_values
+                        tag_val = b''.join(col_values) if type(col_values[0]) is bytes else col_values
+
+                        if type(tag_val) is numpy.bytes_: tag_val=bytes(tag_val)
+
+                        #print("tag_val={}, typ={}".format(tag_val[:11], type(tag_val)))
+                        #print()
+                        
+                        cram_seg.set_tag(tag_name, tag_val)
                                         
                 fastq_path  = None
                 def process_attrs( cram_seg, _, group_or_dset ):
                     nonlocal fastq_path
                     name = group_or_dset.name
-                    
+
                     if is_fastq_path(name): fastq_path=name
                     name,read_num = remove_read_number( name ) 
                     if read_num: cram_seg.set_tag( READ_NUM_TAG, read_num )
@@ -211,6 +220,7 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     for key, val in group_or_dset.attrs.items():
                         value, hdf_type = convert_type(val)
                         tag_name, val_CV = get_tag_name_cv(name+'/'+key)
+                        #print(f"name={name}, key={key}, tag={tag_name}, hdf_type={hdf_type}, tag-type={get_tag_type(hdf_type)}")
                         try:
                             if repr(value) != val_CV : cram_seg.set_tag( tag_name, value, get_tag_type(hdf_type) )
                         except ValueError:
