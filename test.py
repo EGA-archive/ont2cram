@@ -11,7 +11,7 @@ import subprocess
 import argparse
 
 KEEP_TMP      = False
-IGNORE_LINES  = ["HDF5"]#,"\n"]
+IGNORE_LINES  = ["HDF5", "STRSIZE", "STRPAD", "ASCII", "H5T_STD_I16LE", "DATASPACE"]
 TEST_DATA_DIR = os.path.join(os.getcwd(),"test_data")
 
 def h5dump_all_files_in_dir(input_dir, output_dir):
@@ -19,7 +19,9 @@ def h5dump_all_files_in_dir(input_dir, output_dir):
         file_path = os.path.join(input_dir ,f)
         dump_path = os.path.join(output_dir,f+".txt") 
     with open(dump_path,'w') as outfile:
-        subprocess.call(["h5dump",file_path], stdout=outfile)
+    	# Cram does not support double precision floats, 
+    	# so we limit here the dumped precision using the format string
+        subprocess.call(["h5dump","-m%.4g",file_path], stdout=outfile)
     
 
 class Ont2CramTests(unittest.TestCase):
@@ -41,18 +43,19 @@ class Ont2CramTests(unittest.TestCase):
                 buf1 = []
                 buf2 = []        
                 n=0    
+                error_msg = "'{}'(line:{})"
                 for line1,line2  in zip(f1,f2):
                     n += 1
-                    if any(x in line1 for x in IGNORE_LINES): continue
-                    if n%10==0:                    
-                        #diff = d.compare("".join(buf1), "".join(buf2))
-                        self.assertEqual(buf1,buf2, path1)                        
+                    if any(x in line1 for x in IGNORE_LINES): 
+                    	continue
+                    buf1.append(line1.replace("Read_","read_"))
+                    buf2.append(line2)                    
+                    if n%10000==0:                    
+                        self.assertEqual(buf1,buf2, error_msg.format(path1,n))                        
                         buf1.clear()
                         buf2.clear()
-                    else:
-                        buf1.append(line1)
-                        buf2.append(line2)
-                self.assertEqual(buf1,buf2)                        
+                self.assertEqual(buf1,buf2, error_msg.format(path1,n))                        
+                                
                    
     def assert2DirsEqual(self, dir1, dir2):
         dir1_files = os.listdir(dir1)
