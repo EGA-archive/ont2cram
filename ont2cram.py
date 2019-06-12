@@ -188,20 +188,13 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                         col_name   = column[0]
                         tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
                         col = get_column(dset,col_name)
-                        #print("col_type={}".format(type(col)))
                         col_values = col.tolist() if type(col) is numpy.ndarray else col
                         #print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}")
-                        #print("len={}".format(len(col_values)))
 
-                        #cram_seg.set_tag(tag_name, )
-                        #tag_val = b''.join(col_values) if type(col) is numpy.bytes_ else col_values
                         tag_val = b''.join(col_values) if type(col_values[0]) is bytes else col_values
 
                         if type(tag_val) is numpy.bytes_: tag_val=bytes(tag_val)
 
-                        #print("tag_val={}, typ={}".format(tag_val[:11], type(tag_val)))
-                        #print()
-                        
                         cram_seg.set_tag(tag_name, tag_val)
                                         
                 fastq_path  = None

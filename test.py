@@ -8,7 +8,9 @@ import shutil
 import tempfile
 import unittest
 import subprocess
+import argparse
 
+KEEP_TMP      = False
 IGNORE_LINES  = ["HDF5"]#,"\n"]
 TEST_DATA_DIR = os.path.join(os.getcwd(),"test_data")
 
@@ -28,13 +30,12 @@ class Ont2CramTests(unittest.TestCase):
         self.h5dump_restored_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        shutil.rmtree(self.fast5_restored_dir)
-        shutil.rmtree(self.h5dump_original_dir)
-        shutil.rmtree(self.h5dump_restored_dir)                                                                
+    	if not KEEP_TMP:
+    		shutil.rmtree(self.fast5_restored_dir)
+    		shutil.rmtree(self.h5dump_original_dir)
+    		shutil.rmtree(self.h5dump_restored_dir)                                                                
 
     def assert2FilesEqual(self, path1, path2):
-        #self.assertTrue(False,"rrrrrrr")
-        
         with open(path1) as f1:
             with open(path2) as f2:
                 buf1 = []
@@ -45,7 +46,6 @@ class Ont2CramTests(unittest.TestCase):
                     if any(x in line1 for x in IGNORE_LINES): continue
                     if n%10==0:                    
                         #diff = d.compare("".join(buf1), "".join(buf2))
-                        #print ''.join(list(diff))
                         self.assertEqual(buf1,buf2, path1)                        
                         buf1.clear()
                         buf2.clear()
@@ -77,8 +77,15 @@ class Ont2CramTests(unittest.TestCase):
             os.remove(cram_path)
 
 def main():
-    #del(sys.argv[1:])
-    unittest.main()
+	parser = argparse.ArgumentParser(description='Fast5 to CRAM testing tool')
+	parser.add_argument('-k','--keeptmp', help='Do not delete tmp folders and files on exit', action='store_true')
+	args = parser.parse_args()
+
+	global KEEP_TMP
+	KEEP_TMP = args.keeptmp	
+	
+	del(sys.argv[1:])
+	unittest.main()
 
 if __name__ == '__main__':
-    main()
+	main()
