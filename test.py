@@ -32,7 +32,13 @@ class Ont2CramTests(unittest.TestCase):
         self.h5dump_restored_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-    	if not KEEP_TMP:
+    	if KEEP_TMP:
+    		print("-----TMP DIRS-----")
+    		print("Fast5  original dir:'{}'".format(TEST_DATA_DIR))
+    		print("Fast5  restored dir:'{}'".format(self.fast5_restored_dir))
+    		print("h5dump original dir:'{}'".format(self.h5dump_original_dir))
+    		print("h5dump restored dir:'{}'".format(self.h5dump_restored_dir))
+    	else:
     		shutil.rmtree(self.fast5_restored_dir)
     		shutil.rmtree(self.h5dump_original_dir)
     		shutil.rmtree(self.h5dump_restored_dir)                                                                
