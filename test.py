@@ -9,13 +9,14 @@ import tempfile
 import unittest
 import subprocess
 import argparse
+from parameterized import parameterized
 
 KEEP_TMP      = False
 IGNORE_LINES  = [ 
 	"HDF5", 
 	"STRSIZE", 
 	"STRPAD", 
-#	"ASCII", 
+	"ASCII", 
 #	"H5T_STD_I16LE", 
 	"DATASPACE"
 ]
@@ -84,12 +85,13 @@ class Ont2CramTests(unittest.TestCase):
         dir2_files = os.listdir(dir2)
         self.assertTrue( len(dir1)==len(dir2) )
         for f in dir1_files: 
-            self.assert2FilesEqual( os.path.join(dir1,f), os.path.join(dir2,f) )                 
+            self.assert2FilesEqual( os.path.join(dir1,f), os.path.join(dir2,f) )
 
-    def round_trip_test(self, fast5_dir):
+    @parameterized.expand([x[0] for x in os.walk(TEST_DATA_DIR)])
+    def test_round_trip(self, fast5_dir):
         self.fast5_origial_dir = fast5_dir
         files = get_all_fast5_files(self.fast5_origial_dir)
-        print("Testing dir={}, files={}".format(self.fast5_origial_dir,files))        
+        print("Testing dir={}, total files={}".format(self.fast5_origial_dir, len(files)))        
         if len(files)==0: return
                 
         cram_path = tempfile.mkstemp()[1]        
@@ -107,12 +109,6 @@ class Ont2CramTests(unittest.TestCase):
             self.assert2DirsEqual( self.h5dump_original_dir, self.h5dump_restored_dir )            
         finally:
             os.remove(cram_path)
-
-    def test_all(self):    	
-    	subdirs = [x[0] for x in os.walk(self.fast5_origial_dir)]
-    	for dir in subdirs:
-    		with self.subTest():
-    			self.round_trip_test(dir)    		
 
 def main():
 	parser = argparse.ArgumentParser(description='Fast5 to CRAM testing tool')

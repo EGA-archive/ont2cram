@@ -105,7 +105,7 @@ def cram_to_fast5(cram_filename, output_dir):
                         dset = DSETS[dset_name]
 
                         if col_name=="noname":
-                            #print(f"path={a.path}, val={tag_val[:5]}")
+                            #print(f"path={a.path}, val={tag_val[:11]}")
                             dset.append(tag_val)
                         else:       
                             dset.append(

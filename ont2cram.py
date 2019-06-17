@@ -15,6 +15,33 @@ LAST_TAG     = "zZ"
 READ_NUM_TAG = "X0"
 FILENAME_TAG = "X1"
 
+htslib_parray_types = {
+'i1': 'b',
+'u1': 'B',
+'b1': 'b',
+'B1': 'B',
+'i2': 'h',
+'u2': 'H',
+'i4': 'i',
+'I4': 'I',
+'i8': 'i',
+'I8': 'I',
+'int64': 'i',
+'i': 'i',
+'I': 'I',
+'f'      : 'f',
+'float'  : 'f',
+'float32': 'f',
+'float64': 'f',
+'U': 'u',
+'S': 'B',
+'a': 'b',
+}
+
+def get_array_type(t):
+	key = t[:1] if t.startswith(('S','U')) else t
+	return htslib_parray_types[key]
+
 class Tag:
     DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     BASE = len(DIGITS)
@@ -128,7 +155,7 @@ def get_list_of_fast5_files( dir ):
 
 
 def is_shared_value(value, total_fast5_files):
-    return value > total_fast5_files//2
+	return value > total_fast5_files//2
 
 def read_fastq_from_file(pathname):
     fname = os.path.splitext(pathname)[0] + ".fastq"
@@ -150,13 +177,13 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
         tag_and_val = "TG:"+tag.get_name()
         tag.increment()
         if tag_and_val.endswith(LAST_TAG): sys.exit("Running out of Tag space : too many atributes in Fast5")
-        
-        if is_shared_value(val[1], total_fast5_files) and "read_number" not in key:  
-            tag_and_val += " CV:"+repr(value)
+
+        if not is_column:
+        	if is_shared_value(val[1], total_fast5_files) and "read_number" not in key:
+        		tag_and_val += " CV:"+repr(value)
 
         comments_list.append( "{}:'{}':{} {}".format( "COL" if is_column else "ATR", key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
-
             
     header = {  'HD': {'VN': '1.0'},
                 'SQ': [{'LN': 0, 'SN': '*'}],
@@ -168,13 +195,13 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
         for filename in tqdm.tqdm(fast5_files): 
             with h5py.File(filename,'r') as fast5:
 
-                def get_tag_name_cv( hdf_full_path ):
+                def get_tag_name_cv_type( hdf_full_path ):
                     pair = global_dict_attributes[hdf_full_path]
                     assert( pair[1].startswith("TG:") )
                     tag_name = pair[1][3:5]
                     pos_CV = pair[1].find("CV:")
                     val_CV = None if pos_CV==-1 else pair[1][pos_CV+3:]  
-                    return (tag_name,val_CV)              
+                    return ( tag_name, val_CV, pair[0] )
 
                 def get_column( dset, col_name ):
                     if col_name=="noname": return dset[()]
@@ -185,17 +212,17 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     if is_events_path(hdf_path) and skipsignal: return
                     if is_fastq_path(hdf_path)                : return
                     for column in columns:
-                        col_name   = column[0]
-                        tag_name,_ = get_tag_name_cv(hdf_path+'/'+col_name)
+                        col_name             = column[0]
+                        tag_name,_,hdf_type  = get_tag_name_cv_type(hdf_path+'/'+col_name)
+
                         col = get_column(dset,col_name)
-                        col_values = col.tolist() if type(col) is numpy.ndarray else col
+
+                        col_values = col.tolist() if type(col) is numpy.ndarray else col                      
                         #print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}")
-
                         tag_val = b''.join(col_values) if type(col_values[0]) is bytes else col_values
-
                         if type(tag_val) is numpy.bytes_: tag_val=bytes(tag_val)
-
-                        cram_seg.set_tag(tag_name, tag_val)
+                        if type(tag_val) is list: tag_val = array.array( get_array_type(hdf_type), tag_val )
+                        cram_seg.set_tag(tag_name, tag_val)                        
                                         
                 fastq_path  = None
                 def process_attrs( cram_seg, _, group_or_dset ):
@@ -211,8 +238,9 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                         process_dataset( cram_seg, name, group_or_dset, columns )
                     
                     for key, val in group_or_dset.attrs.items():
-                        value, hdf_type = convert_type(val)
-                        tag_name, val_CV = get_tag_name_cv(name+'/'+key)
+                        value,hdf_type    = convert_type(val)
+                        tag_name,val_CV,_ = get_tag_name_cv_type(name+'/'+key)
+                        
                         #print(f"name={name}, key={key}, tag={tag_name}, hdf_type={hdf_type}, tag-type={get_tag_type(hdf_type)}")
                         try:
                             if repr(value) != val_CV : cram_seg.set_tag( tag_name, value, get_tag_type(hdf_type) )
@@ -263,6 +291,9 @@ def run(input_dir, fastq_dir, output_file, skip_signal):
 
     print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
     write_cram( fast5_files, output_file, skip_signal, fastq_dir )
+
+    global_dict_attributes.clear()
+    
 
 def main():
     parser = argparse.ArgumentParser(description='Fast5 to CRAM conversion utility')
