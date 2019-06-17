@@ -9,7 +9,7 @@ setup(
     long_description=long_description,
     version = "0.0.1",
     author="EMBL-EBI",
-    install_requires=["h5py", "tqdm", "pysam", "numpy"],
+    install_requires=["h5py", "tqdm", "pysam", "numpy", "parameterized"],
     keywords=["ONT", "FAST5", "HDF", "CRAM"],
     license="Apache License, Version 2.0",
     url="https://github.com/EGA-archive/ont2cram",
