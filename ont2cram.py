@@ -10,10 +10,11 @@ import re
 import numpy
 from functools import partial
 
-FIRST_TAG    = "a0"
-LAST_TAG     = "zZ"
-READ_NUM_TAG = "X0"
-FILENAME_TAG = "X1"
+FIRST_TAG    	   = "a0"
+LAST_TAG     	   = "zZ"
+FILENAME_TAG 	   = "X0"
+READ_NUM_TAG_SHORT = "X1"
+READ_NUM_TAG_LONG  = "X2"
 
 htslib_parray_types = {
 'i1': 'b',
@@ -118,19 +119,31 @@ def process_dataset(hdf_path, columns):
         
 
 def remove_read_number(attribute_path):
-    if not "/read_" in attribute_path.lower(): 
-    	return attribute_path, None
+    if not "/read_" in attribute_path: 
+    	if not "/Reads/Read_" in attribute_path:
+    		return attribute_path,None,None
 
-    match = re.match(r"(^.*\/read_)({?\w{8}-?\w{4}-?\w{4}-?\w{4}-?\w{12}}?|\d+)(.*$)", attribute_path, re.I)
-    if match:
-    	return match.group(1)+"XXX"+match.group(3), match.group(2) 
-    else:
-    	return attribute_path, None   	
+    read_num_long = None
+    read_num_short= None
+
+    match_long = re.match(r"(^.*\/read_)({?[0-9a-fA-F\-]+}?)(\/.*$)", attribute_path)
+    if match_long:
+    	attribute_path = match_long.group(1)+"XXXXX"+match_long.group(3)
+    	read_num_long  = match_long.group(2) 
+        
+    match_short = re.match(r"(^.*\/Reads\/Read_)(\d+)(.*$)", attribute_path)
+    if match_short:
+    	attribute_path = match_short.group(1)+"YYY"+match_short.group(3)
+    	read_num_short  = match_short.group(2) 
+    	
+    return attribute_path,read_num_long,read_num_short   
+    
    
 def pre_process_group_attrs(_, hdf_node):
     global global_dict_attributes
-    node_path = hdf_node.name
-    node_path,_ = remove_read_number( node_path )
+    
+    node_path     = hdf_node.name
+    node_path,_,_ = remove_read_number( node_path )
 
     if type(hdf_node) is h5py.Dataset:
         columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', hdf_node.dtype.str)]
@@ -229,9 +242,13 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     nonlocal fastq_path
                     name = group_or_dset.name
 
-                    if is_fastq_path(name): fastq_path=name
-                    name,read_num = remove_read_number( name ) 
-                    if read_num: cram_seg.set_tag( READ_NUM_TAG, read_num )
+                    if is_fastq_path(name):
+                    	fastq_path=name
+                    name,read_num_long,read_num_short  = remove_read_number( name ) 
+                    
+                    if read_num_long : cram_seg.set_tag( READ_NUM_TAG_LONG, read_num_long )
+                    if read_num_short: cram_seg.set_tag( READ_NUM_TAG_SHORT, read_num_short )
+                                        
 
                     if type(group_or_dset) is h5py.Dataset:
                         columns = group_or_dset.dtype.fields.items() if group_or_dset.dtype.fields else [('noname', None)]

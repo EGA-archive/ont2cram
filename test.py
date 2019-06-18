@@ -66,18 +66,20 @@ class Ont2CramTests(unittest.TestCase):
                 buf1 = []
                 buf2 = []        
                 n=0    
-                error_msg = "'{}' vs'{}' (line:{})"
-                for line1,line2  in zip(f1,f2):
+                error_msg = 'diff -u "{}" "{}"'
+                for line1,line2 in zip(f1,f2):
                     n += 1
                     if any(x in line1 for x in IGNORE_LINES): 
                     	continue
-                    buf1.append(line1.replace("Read_","read_"))
+                    buf1.append(line1)                    	                    	
                     buf2.append(line2)                    
                     if n%10000==0:                    
                         self.assertEqual(buf1,buf2, error_msg.format(path1,path2,n))                        
                         buf1.clear()
                         buf2.clear()
-                self.assertEqual(buf1,buf2, error_msg.format(path1,path2,n))                        
+                self.assertEqual(buf1,buf2, error_msg.format(path1,path2,n))
+                buf1.clear()
+                buf2.clear()
                                 
                    
     def assert2DirsEqual(self, dir1, dir2):

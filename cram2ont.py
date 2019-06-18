@@ -12,9 +12,12 @@ import numpy.lib.recfunctions as rfn
 
 DT_STR_VLEN = h5py.special_dtype(vlen=str)
 
-READ_NUM_TAG = "X0"
-FILENAME_TAG = "X1"
-RESERVED_TAGS = [READ_NUM_TAG, FILENAME_TAG]
+
+FILENAME_TAG       = "X0"
+READ_NUM_TAG_SHORT = "X1"
+READ_NUM_TAG_LONG  = "X2"
+
+RESERVED_TAGS = [READ_NUM_TAG_SHORT, READ_NUM_TAG_LONG, FILENAME_TAG]
 
 STR_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -64,8 +67,12 @@ def cram_to_fast5(cram_filename, output_dir):
             return isinstance(obj,bytes) and len(obj)==expected_len and (not is_null_term or obj[-1:]==0) \
                    and STR_HEX_PATTERN.match(obj[:expected_len-bytes_to_remove_end].decode())
 
-        def get_path(hdf_path, read_number):
-            return hdf_path.replace("Read_XXX",read_number).replace("read_XXX",read_number)       
+        def get_path(hdf_path, read_number_long, read_number_short):
+        	if read_number_short:
+        		hdf_path = hdf_path.replace("Read_YYY",  read_number_short)
+        	if read_number_long:
+        		hdf_path = hdf_path.replace("read_XXXXX",read_number_long )
+        	return hdf_path
             
         def write_hdf_attr(hdf5_file, attr_path, attr_value, attr_type):
             #print(f"path={attr_path}, val={attr_value}, type={attr_type}")
@@ -83,8 +90,18 @@ def cram_to_fast5(cram_filename, output_dir):
             
         for read in tqdm.tqdm(samfile.fetch(until_eof=True)):
             fast5_filename = read.get_tag(FILENAME_TAG)
-            read_number  = "read_"+str(read.get_tag(READ_NUM_TAG))                        
-            
+            read_number_long=None
+            try:
+            	read_number_long   = "read_"+str(read.get_tag(READ_NUM_TAG_LONG))
+            except KeyError:
+            	pass
+            	
+            read_number_short=None
+            try:
+            	read_number_short  = "Read_"+str(read.get_tag(READ_NUM_TAG_SHORT))                        
+            except KeyError:
+            	pass
+                        
             with h5py.File( os.path.join(output_dir,fast5_filename), "a" ) as f:
                 if read.query_name != "nofastq":
                     fastq_lines = np.string_(
@@ -99,7 +116,9 @@ def cram_to_fast5(cram_filename, output_dir):
                     if tag_name in RESERVED_TAGS: continue 
                     a = attr_dict[tag_name]
                     if a.is_col:
-                        dset_name,_,col_name =  get_path(a.path,read_number).rpartition('/')
+                        dset_name,_,col_name = get_path(
+                        	a.path,read_number_long,read_number_short ).rpartition('/')
+                        	
                         if dset_name.endswith("Fastq") and col_name=="noname": continue
                         if dset_name not in DSETS: DSETS[dset_name] = []
                         dset = DSETS[dset_name]
@@ -121,7 +140,8 @@ def cram_to_fast5(cram_filename, output_dir):
                 # write constant values stored in cram header
                 for a in attr_dict.values():
                     if a.is_col: continue
-                    if a.value : write_hdf_attr( f, get_path(a.path,read_number), a.value, a.type )                     
+                    if a.value : 
+                    	write_hdf_attr( f, get_path(a.path,read_number_long, read_number_short), a.value, a.type )
 
                 # write tags stored in cram records                                                
                 for tag_name, tag_val in read.get_tags():
@@ -129,7 +149,7 @@ def cram_to_fast5(cram_filename, output_dir):
                     a = attr_dict[tag_name]
                     if a.is_col: continue
                     if a.value != tag_val: 
-                        write_hdf_attr( f, get_path(a.path,read_number), tag_val, a.type )
+                        write_hdf_attr( f, get_path(a.path,read_number_long, read_number_short), tag_val, a.type )
 
 
 def run(input_file, output_dir):
