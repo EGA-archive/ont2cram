@@ -13,11 +13,10 @@ from parameterized import parameterized
 
 KEEP_TMP      = False
 IGNORE_LINES  = [ 
-	"HDF5", 
-	"STRSIZE", 
+	'.fast5" {',
+	"H5T_VARIABLE", 
 	"STRPAD", 
-	"ASCII", 
-#	"H5T_STD_I16LE", 
+	"H5T_CSET_UTF8", 
 	"DATASPACE"
 ]
 
@@ -66,10 +65,10 @@ class Ont2CramTests(unittest.TestCase):
                 buf1 = []
                 buf2 = []        
                 n=0    
-                error_msg = 'diff -u "{}" "{}"'
+                error_msg = 'diff -u "{}" "{}" (line:{})'
                 for line1,line2 in zip(f1,f2):
                     n += 1
-                    if any(x in line1 for x in IGNORE_LINES): 
+                    if any(x in line2 for x in IGNORE_LINES): 
                     	continue
                     buf1.append(line1)                    	                    	
                     buf2.append(line2)                    

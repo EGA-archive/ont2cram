@@ -27,9 +27,18 @@ htslib_parray_types = {
 'I4': 'I',
 'i8': 'i',
 'I8': 'I',
-'int64': 'i',
-'i': 'i',
-'I': 'I',
+'i' : 'i',
+'I' : 'I',
+'int8'  : 'b',
+'uint8' : 'B',
+'int16' : 'h',
+'uint16': 'H',
+'int32' : 'i',
+'uint32': 'I',
+'int64' : 'i',
+'uint64': 'I',
+'int'   : 'i',
+'uint'  : 'I',
 'f'      : 'f',
 'float'  : 'f',
 'float32': 'f',
@@ -87,7 +96,13 @@ def get_type(value):
 
 def convert_type(value):
     typ = convert_t( get_type(value).str ) 
-    return ( value.decode('ascii') if typ[0]=='S' else value, typ[:1] if typ.startswith(('U','S')) else typ )
+    #print(f"typ={typ}, val_type={type(value)}, value={value[:5] if type(value) is list else value}")
+    val = value
+    if typ[0]=='S': 
+    	if type(value) is numpy.ndarray: 
+    		val = b''.join(map(bytes,value))
+    	val = val.decode('ascii')
+    return ( val, typ[:1] if typ.startswith(('U','S')) else typ )
 
 def is_fastq_path(hdf_path):
     return hdf_path.endswith("BaseCalled_template/Fastq")
