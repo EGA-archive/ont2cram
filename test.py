@@ -49,7 +49,7 @@ class Ont2CramTests(unittest.TestCase):
 
     def tearDown(self):
     	if KEEP_TMP:
-    		print("-----TMP DIRS-----")
+    		print("----------------------TMP DIRS-----------------------")
     		print("Fast5  original dir:'{}'".format(self.fast5_origial_dir))
     		print("Fast5  restored dir:'{}'".format(self.fast5_restored_dir))
     		print("h5dump original dir:'{}'".format(self.h5dump_original_dir))
@@ -95,7 +95,7 @@ class Ont2CramTests(unittest.TestCase):
         print("Testing dir={}, total files={}".format(self.fast5_origial_dir, len(files)))        
         if len(files)==0: return
                 
-        cram_path = tempfile.mkstemp()[1]        
+        cram_path = tempfile.mkstemp(suffix=".cram")[1]        
         try:
 
             #forward conversion
@@ -109,7 +109,11 @@ class Ont2CramTests(unittest.TestCase):
 
             self.assert2DirsEqual( self.h5dump_original_dir, self.h5dump_restored_dir )            
         finally:
-            os.remove(cram_path)
+        	if KEEP_TMP:
+        		print("----------------------TMP FILES----------------------")
+        		print("Generated CRAM :'{}'".format(cram_path))
+        	else:
+        		os.remove(cram_path)
 
 def main():
 	parser = argparse.ArgumentParser(description='Fast5 to CRAM testing tool')

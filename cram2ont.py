@@ -35,6 +35,12 @@ def check_destination_exists(cram_filename, output_dir):
 			if os.path.exists(fast5_pathname):
 				sys.exit( "Destination file already exists:{}".format(fast5_pathname) )
 
+def is_empty_hdf_node(hdf_path):
+	return hdf_path.endswith("/dummy_attr")
+
+def get_path_from_dummy(hdf_path):
+	return hdf_path.replace("/dummy_attr","")
+
 def cram_to_fast5(cram_filename, output_dir):
     check_destination_exists(cram_filename, output_dir)
     	
@@ -108,8 +114,8 @@ def cram_to_fast5(cram_filename, output_dir):
                         "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
                     f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
 
-                def chunkstring(string, length):
-                    return (string[0+i:length+i] for i in range(0, len(string), length))
+                def split_string_by(string, split_char):                	
+                    return  [x.group(0) for x in re.finditer(r"([^"+split_char+"]+)", string)]
 
                 DSETS = {}
                 for tag_name,tag_val in read.get_tags():
@@ -126,10 +132,10 @@ def cram_to_fast5(cram_filename, output_dir):
                         if col_name=="noname":
                             #print(f"path={a.path}, val={tag_val[:11]}")
                             dset.append(tag_val)
-                        else:       
-                            dset.append(
+                        else:
+                        	dset.append(
                                 np.array( 
-                                    list(chunkstring(tag_val,int(a.type[1:]))) if a.type.startswith(('S','U')) else tag_val, 
+                                    list(split_string_by(tag_val,'\x03')) if a.type.startswith(('S','U')) else tag_val, 
                                     dtype=[(col_name, a.type)] 
                                 )
                              )
@@ -147,6 +153,9 @@ def cram_to_fast5(cram_filename, output_dir):
                 for tag_name, tag_val in read.get_tags():
                     if tag_name in RESERVED_TAGS: continue    
                     a = attr_dict[tag_name]
+                    if is_empty_hdf_node(a.path):
+                    	f.create_group( get_path_from_dummy(a.path) )
+                    	continue
                     if a.is_col: continue
                     if a.value != tag_val: 
                         write_hdf_attr( f, get_path(a.path,read_number_long, read_number_short), tag_val, a.type )

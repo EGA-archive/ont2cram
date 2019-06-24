@@ -152,7 +152,12 @@ def remove_read_number(attribute_path):
     	read_num_short  = match_short.group(2) 
     	
     return attribute_path,read_num_long,read_num_short   
-    
+
+def is_empty_hdf_group(hdf_node):
+	return len(hdf_node.keys())==0 and len(hdf_node.attrs.items())==0
+
+def construct_dummy_attr(hdf_path):
+	return hdf_path+'/dummy_attr'	
    
 def pre_process_group_attrs(_, hdf_node):
     global global_dict_attributes
@@ -163,7 +168,10 @@ def pre_process_group_attrs(_, hdf_node):
     if type(hdf_node) is h5py.Dataset:
         columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', hdf_node.dtype.str)]
         process_dataset( node_path, columns )
-           
+    else:
+    	if is_empty_hdf_group(hdf_node):
+    		global_dict_attributes[construct_dummy_attr(node_path)] = ['',1]   	
+               
     for key, val in hdf_node.attrs.items():
         full_key = node_path+'/'+key
         try:
@@ -242,18 +250,14 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     for column in columns:
                         col_name             = column[0]
                         tag_name,_,hdf_type  = get_tag_name_cv_type(hdf_path+'/'+col_name)
-                        hdf_type_len         = hdf_type[1:]
 
                         col = get_column(dset,col_name)
 
                         col_values = col.tolist() if type(col) is numpy.ndarray else col
-                        print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}, hdf_type={hdf_type}")
+                        #print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}, hdf_type={hdf_type}")
                         tag_val = col_values
                         if type(col_values[0]) is bytes:
-                        	if hdf_type_len.isdigit():
-                        		tag_val = b''.join([x.ljust(int(hdf_type_len),b' ') for x in col_values])
-                        	else:
-                        		tag_val = b''.join(col_values)                                                 
+                        	tag_val = b'\x03'.join(col_values)                                                 
                         
                         if type(tag_val) is numpy.bytes_: tag_val=bytes(tag_val)
                         if type(tag_val) is list: tag_val = array.array( get_array_type(hdf_type), tag_val )
@@ -275,6 +279,10 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     if type(group_or_dset) is h5py.Dataset:
                         columns = group_or_dset.dtype.fields.items() if group_or_dset.dtype.fields else [('noname', None)]
                         process_dataset( cram_seg, name, group_or_dset, columns )
+                    else:
+                    	if is_empty_hdf_group(group_or_dset):
+                    		tag_name,_,_ = get_tag_name_cv_type( construct_dummy_attr(name) )
+                    		cram_seg.set_tag(tag_name,1)                     
                     
                     for key, val in group_or_dset.attrs.items():
                         value,hdf_type    = convert_type(val)
