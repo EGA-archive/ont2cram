@@ -242,12 +242,19 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     for column in columns:
                         col_name             = column[0]
                         tag_name,_,hdf_type  = get_tag_name_cv_type(hdf_path+'/'+col_name)
+                        hdf_type_len         = hdf_type[1:]
 
                         col = get_column(dset,col_name)
 
-                        col_values = col.tolist() if type(col) is numpy.ndarray else col                      
-                        #print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}")
-                        tag_val = b''.join(col_values) if type(col_values[0]) is bytes else col_values
+                        col_values = col.tolist() if type(col) is numpy.ndarray else col
+                        print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}, hdf_type={hdf_type}")
+                        tag_val = col_values
+                        if type(col_values[0]) is bytes:
+                        	if hdf_type_len.isdigit():
+                        		tag_val = b''.join([x.ljust(int(hdf_type_len),b' ') for x in col_values])
+                        	else:
+                        		tag_val = b''.join(col_values)                                                 
+                        
                         if type(tag_val) is numpy.bytes_: tag_val=bytes(tag_val)
                         if type(tag_val) is list: tag_val = array.array( get_array_type(hdf_type), tag_val )
                         cram_seg.set_tag(tag_name, tag_val)                        
