@@ -65,6 +65,7 @@ class Ont2CramTests(unittest.TestCase):
                 buf1 = []
                 buf2 = []        
                 n=0    
+                if KEEP_TMP: print('@@@: diff -u "{}" "{}" | cdiff'.format(path1,path2))
                 error_msg = 'diff -u "{}" "{}" (line:{})'
                 for line1,line2 in zip(f1,f2):
                     n += 1
@@ -85,6 +86,7 @@ class Ont2CramTests(unittest.TestCase):
         dir1_files = os.listdir(dir1)
         dir2_files = os.listdir(dir2)
         self.assertTrue( len(dir1)==len(dir2) )
+        if KEEP_TMP: print("---------------------DIFF FILES----------------------")
         for f in dir1_files: 
             self.assert2FilesEqual( os.path.join(dir1,f), os.path.join(dir2,f) )
 
