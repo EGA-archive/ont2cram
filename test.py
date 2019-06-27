@@ -63,21 +63,24 @@ class Ont2CramTests(unittest.TestCase):
         with open(path1) as f1:
             with open(path2) as f2:
                 buf1 = []
-                buf2 = []        
-                n=0    
-                if KEEP_TMP: print('@@@: diff -u "{}" "{}" | cdiff'.format(path1,path2))
-                error_msg = 'diff -u "{}" "{}" (line:{})'
-                for line1,line2 in zip(f1,f2):
-                    n += 1
+                buf2 = []                        
+                error_msg = "File:'{}'".format(os.path.basename(path1))    
+                
+                if KEEP_TMP: 
+                	error_msg = 'diff -u "{}" "{}" | cdiff'.format(path1,path2)
+                	print(error_msg)
+                	
+                for line1,line2,n in zip(f1,f2,range(sys.maxsize)):
                     if any(x in line2 for x in IGNORE_LINES): 
-                    	continue
+                    	continue                    
                     buf1.append(line1)                    	                    	
                     buf2.append(line2)                    
                     if n%10000==0:                    
-                        self.assertEqual(buf1,buf2, error_msg.format(path1,path2,n))                        
+                        self.assertEqual(buf1,buf2, error_msg )                        
                         buf1.clear()
                         buf2.clear()
-                self.assertEqual(buf1,buf2, error_msg.format(path1,path2,n))
+                        
+                self.assertEqual(buf1,buf2, error_msg )
                 buf1.clear()
                 buf2.clear()
                                 
@@ -126,7 +129,7 @@ def main():
 	KEEP_TMP = args.keeptmp	
 	
 	del(sys.argv[1:])
-	unittest.main()
+	unittest.main(verbosity=2, buffer=not KEEP_TMP)
 
 if __name__ == '__main__':
 	main()
