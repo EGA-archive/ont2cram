@@ -141,14 +141,14 @@ def remove_read_number(attribute_path):
     read_num_long = None
     read_num_short= None
 
-    match_long = re.match(r"(^.*\/read_)({?[0-9a-fA-F\-]+}?)(\/.*$)", attribute_path)
+    match_long = re.match(r"(^.*\/read_)({?[0-9a-fA-F\-]+}?)(\/.+)*$", attribute_path)
     if match_long:
-    	attribute_path = match_long.group(1)+"XXXXX"+match_long.group(3)
+    	attribute_path = match_long.group(1)+"XXXXX"+(match_long.group(3) or "")
     	read_num_long  = match_long.group(2) 
         
-    match_short = re.match(r"(^.*\/Reads\/Read_)(\d+)(.*$)", attribute_path)
+    match_short = re.match(r"(^.*\/Reads\/Read_)(\d+)(\/.+)*$", attribute_path)
     if match_short:
-    	attribute_path = match_short.group(1)+"YYY"+match_short.group(3)
+    	attribute_path = match_short.group(1)+"YYY"+ (match_short.group(3) or "")
     	read_num_short  = match_short.group(2) 
     	
     return attribute_path,read_num_long,read_num_short   
@@ -164,7 +164,8 @@ def pre_process_group_attrs(_, hdf_node):
     
     node_path     = hdf_node.name
     node_path,_,_ = remove_read_number( node_path )
-
+    #if "r" in node_path: print("after="+node_path)      
+        
     if type(hdf_node) is h5py.Dataset:
         columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', hdf_node.dtype.str)]
         process_dataset( node_path, columns )
@@ -220,7 +221,7 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
 
         comments_list.append( "{}:'{}':{} {}".format( "COL" if is_column else "ATR", key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
-            
+
     header = {  'HD': {'VN': '1.0'},
                 'SQ': [{'LN': 0, 'SN': '*'}],
                 'CO': comments_list 
