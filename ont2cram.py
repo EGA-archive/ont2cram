@@ -8,6 +8,7 @@ import array
 import argparse
 import re
 import numpy
+import gzip
 from functools import partial
 
 FIRST_TAG    	   = "a0"
@@ -77,6 +78,12 @@ class Tag:
         return res
 
 global_dict_attributes = {}
+
+def bytes_to_str(val):
+	if type(val) in [bytes, numpy.bytes_]:
+		return val.decode('ascii')
+	else: 
+		return val
 
 def get_tag_type(np_typecode):
     if np_typecode.startswith(('u','i')): return 'i'
@@ -194,14 +201,18 @@ def get_list_of_fast5_files( dir ):
 def is_shared_value(value, total_fast5_files):
 	return value > total_fast5_files//2
 
-def read_fastq_from_file(pathname):
-    fname = os.path.splitext(pathname)[0] + ".fastq"
-    with open(fname) as f:
-        lines = f.read().splitlines()
-        if len(lines) != 4: sys.exit("Invalid FASTQ file: '{}'".format(fname))
-        return lines
 
-def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
+def list_files(dir, ext):
+    return [os.path.join(dir,f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and ext in f]
+
+def read_fastq_from_file(fn):
+    with (gzip.open(fn) if fn.endswith(".gz") else open(fn)) as f:
+        lines = f.read().splitlines()
+        if len(lines)%4 > 0: sys.exit("Invalid FASTQ file: '{}'".format(fn))
+        for i in range(0,len(lines),4):
+            yield lines[i].split()[0][1:], lines[i+1]
+
+def write_cram(fast5_files, cram_file, skipsignal, fastq_map):
     total_fast5_files = len(fast5_files)
     comments_list = []
     tag = Tag(FIRST_TAG)
@@ -263,19 +274,17 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                         if type(tag_val) is numpy.bytes_: tag_val=bytes(tag_val)
                         if type(tag_val) is list: tag_val = array.array( get_array_type(hdf_type), tag_val )
                         cram_seg.set_tag(tag_name, tag_val)                        
-                                        
-                fastq_path  = None
+                
                 def process_attrs( cram_seg, _, group_or_dset ):
-                    nonlocal fastq_path
                     name = group_or_dset.name
 
-                    if is_fastq_path(name):
-                    	fastq_path=name
+                    nonlocal fastq_path                                        
+                    if is_fastq_path(name): fastq_path=name                    
+                    
                     name,read_num_long,read_num_short  = remove_read_number( name ) 
                     
                     if read_num_long : cram_seg.set_tag( READ_NUM_TAG_LONG, read_num_long )
                     if read_num_short: cram_seg.set_tag( READ_NUM_TAG_SHORT, read_num_short )
-                                        
 
                     if type(group_or_dset) is h5py.Dataset:
                         columns = group_or_dset.dtype.fields.items() if group_or_dset.dtype.fields else [('noname', None)]
@@ -288,10 +297,12 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                     for key, val in group_or_dset.attrs.items():
                         value,hdf_type    = convert_type(val)
                         tag_name,val_CV,_ = get_tag_name_cv_type(name+'/'+key)
+
+                        nonlocal read_id 
+                        if key=="read_id": read_id = val
                         
-                        #print(f"name={name}, key={key}, tag={tag_name}, hdf_type={hdf_type}, tag-type={get_tag_type(hdf_type)}")
                         try:
-                            if repr(value) != val_CV : cram_seg.set_tag( tag_name, value, get_tag_type(hdf_type) )
+                            if repr(value)!=val_CV : cram_seg.set_tag( tag_name, value, get_tag_type(hdf_type) )
                         except ValueError:
                             sys.exit("Could not detemine tag type (val={}, hdf_type={})".format(value,hdf_type))
                             
@@ -302,11 +313,20 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
                 for read_group in read_groups:
                 	a_s = pysam.AlignedSegment()
                 	a_s.set_tag( FILENAME_TAG, os.path.basename(filename) )
+
+                	read_id    = None
+                	fastq_path = None
+
+                	process_attrs(a_s, None, read_group) #root group               	
                 	read_group.visititems( partial(process_attrs,a_s) )
 
                 	fastq_lines = ["nofastq",None,None,None]
                 	if fastq_path: fastq_lines = read_group[fastq_path].value.splitlines()                
-                	if fastq_dir:  fastq_lines = read_fastq_from_file( os.path.join(fastq_dir,os.path.basename(filename)) )                
+                	if fastq_map:
+                	    if not read_id:
+                	        sys.exit("Could not find read_id attribute in :'{}', group='{}'".format(filename,read_group.name))
+                	    fastq_lines[0] = '@'+bytes_to_str(read_id)
+                	    fastq_lines[1] = fastq_map[read_id]
 
                 	a_s.query_name = fastq_lines[0]
                 	a_s.query_sequence=fastq_lines[1]
@@ -322,6 +342,14 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_dir):
 
                 	outf.write(a_s)
 
+def load_fastq(dir):
+    print("Loading fastq..." )		
+    map = {}
+    for f in list_files(dir,".fastq"):
+        for read_id,read_fastq in read_fastq_from_file(f):
+            map[read_id] = read_fastq
+    return map
+
 def exit_if_not_dir(d):
     if not os.path.isdir(d): sys.exit( "Not dir: %s" % d )
 
@@ -333,12 +361,14 @@ def run(input_dir, fastq_dir, output_file, skip_signal):
 
     if not fast5_files: sys.exit( "No .fast5 files found in dir '%s'" % input_dir )
 
+    fastq_map = load_fastq(fastq_dir) if fastq_dir else None        
+
     print("Phase 1 of 2 : pre-processing Fast5 files...")
     for f in tqdm.tqdm(fast5_files): 
         walk_fast5( f, pre_process_group_attrs )
 
     print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
-    write_cram( fast5_files, output_file, skip_signal, fastq_dir )
+    write_cram( fast5_files, output_file, skip_signal, fastq_map )
 
     global_dict_attributes.clear()
     
