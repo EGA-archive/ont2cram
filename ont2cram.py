@@ -194,16 +194,12 @@ def walk_fast5( filename, walk_group_function ):
         walk_group_function("/", f)
         f.visititems( walk_group_function )
 
-def get_list_of_fast5_files( dir ):
-    return [os.path.join(dir, f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir,f)) and f.endswith('.fast5')]
-
-
 def is_shared_value(value, total_fast5_files):
 	return value > total_fast5_files//2
 
 
-def list_files(dir, ext):
-    return [os.path.join(dir,f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and ext in f]
+def list_files(dir, condition):
+    return [os.path.join(r,file) for r,d,f in os.walk(dir) for file in f if condition(file)]
 
 def read_fastq_from_file(fn):
     with (gzip.open(fn) if fn.endswith(".gz") else open(fn)) as f:
@@ -343,9 +339,9 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_map):
                 	outf.write(a_s)
 
 def load_fastq(dir):
-    print("Loading fastq..." )		
+    print("Loading FASTQ from: '{}'".format(os.path.abspath(dir)) )		
     map = {}
-    for f in list_files(dir,".fastq"):
+    for f in tqdm.tqdm( list_files(dir,lambda f:".fastq" in f) ):
         for read_id,read_fastq in read_fastq_from_file(f):
             map[read_id] = read_fastq
     return map
@@ -357,17 +353,17 @@ def run(input_dir, fastq_dir, output_file, skip_signal):
     exit_if_not_dir(input_dir)
     if fastq_dir: exit_if_not_dir(fastq_dir)
     
-    fast5_files = get_list_of_fast5_files( input_dir )
+    fast5_files = list_files( input_dir, lambda f:f.endswith('.fast5') )
 
     if not fast5_files: sys.exit( "No .fast5 files found in dir '%s'" % input_dir )
 
     fastq_map = load_fastq(fastq_dir) if fastq_dir else None        
 
-    print("Phase 1 of 2 : pre-processing Fast5 files...")
+    print("Loading Fast5 from: '{}'".format(os.path.abspath(input_dir)))
     for f in tqdm.tqdm(fast5_files): 
         walk_fast5( f, pre_process_group_attrs )
 
-    print("Phase 2 of 2 : converting Fast5 files to CRAM..." )
+    print("Writing CRAM to: '{}'".format(os.path.abspath(output_file)))
     write_cram( fast5_files, output_file, skip_signal, fastq_map )
 
     global_dict_attributes.clear()
