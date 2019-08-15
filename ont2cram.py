@@ -234,13 +234,7 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_map):
                 'CO': comments_list 
                }    
 
-    with pysam.AlignmentFile( 
-        cram_file, 
-        "wc", 
-        header=header, 
-        format_options=[b"no_ref=1",b"seqs_per_slice=50000"],
-        threads = 8
-    ) as outf:
+    with pysam.AlignmentFile( cram_file, "wc", header=header, format_options=[b"no_ref=1"] ) as outf:
         #print([k for k in global_dict_attributes.keys() if "Raw" in k] )
         for filename in tqdm.tqdm(fast5_files): 
             with h5py.File(filename,'r') as fast5:
