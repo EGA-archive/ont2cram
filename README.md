@@ -39,6 +39,10 @@ CV part is optional - currently present only for attributes(skipped for dataset 
 
 Tag names are generated sequentially ( a0,a1....aa.....az,aA...aZ...zZ ). If 'zZ' is reached the program exists with an error. 
 
+Exceptions(special tags): X0(stores original filename), X1(stores read number in short format), X2(stores read number in long format)
+
+The following paths are expected in HDF(Fast5) : "{path from root}/BaseCalled_template/Fastq" (if FASTQ is present), "{path from root}/Signal" (raw signal), "{path from root}/Events" (for old Fast5 containing events).
+
 HDF datasets are stored in Cram as separate columns - each column in a separate tag
 
 Optional **"--skipsignal"** flag allows to skip raw signal(and Events dataset which is derived from Signal) and produce _much_ smaller Crams
