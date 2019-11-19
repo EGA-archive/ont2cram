@@ -328,13 +328,14 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_map):
                 	a_s.query_sequence=fastq_lines[1]
                 	a_s.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
                 	a_s.flag = 4
-                	a_s.reference_id = 0
+                	a_s.reference_id = -1
                 	a_s.reference_start = 0
                 	a_s.mapping_quality = 0
                 	a_s.cigar = ()
-                	a_s.next_reference_id = 0
+                	a_s.next_reference_id = -1
                 	a_s.next_reference_start=0
                 	a_s.template_length=0
+                	a_s.is_unmapped = True
 
                 	outf.write(a_s)
 
@@ -343,7 +344,7 @@ def load_fastq(dir):
     map = {}
     for f in tqdm.tqdm( list_files(dir,lambda f:".fastq" in f) ):
         for read_id,read_fastq in read_fastq_from_file(f):
-            map[read_id] = read_fastq
+            map[str.encode(read_id)] = read_fastq
     return map
 
 def exit_if_not_dir(d):
