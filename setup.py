@@ -1,18 +1,19 @@
 from setuptools import setup
+from ont2cram import META_INFO as _meta
 
 with open("README.md") as f:
     long_description = f.read()
 
 setup(
     name="ont2cram",
-    description="Oxford Nanopore HDF/Fast5 to CRAM conversion tool",
+    description=_meta['description'],
     long_description=long_description,
-    version = "0.0.1",
-    author="EMBL-EBI",
+    version=_meta['version'],    
+    author=_meta['author'],
     install_requires=["h5py", "tqdm", "pysam", "numpy", "parameterized"],
-    keywords=["ONT", "FAST5", "HDF", "CRAM"],
-    license="Apache License, Version 2.0",
-    url="https://github.com/EGA-archive/ont2cram",
+    keywords=_meta['keywords'],
+    license=_meta['license'],
+    url=_meta['url'],
     classifiers=[        
         "Development Status :: 3 - Alpha",
         "Topic :: Scientific/Engineering :: Bio-Informatics",

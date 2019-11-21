@@ -11,6 +11,15 @@ import numpy
 import gzip
 from functools import partial
 
+META_INFO = {
+    'version'     : '0.0.1',
+    'license'     : 'Apache License 2.0',
+    'author'      : 'EBI',
+    'url'         : 'https://github.com/EGA-archive/ont2cram',
+    'keywords'    : 'ONT HDF Fast5 CRAM',
+    'description' : 'Oxford Nanopore HDF/Fast5 to CRAM conversion tool'
+}
+
 FIRST_TAG    	   = "a0"
 LAST_TAG     	   = "zZ"
 FILENAME_TAG 	   = "X0"
@@ -371,7 +380,8 @@ def run(input_dir, fastq_dir, output_file, skip_signal):
     
 
 def main():
-    parser = argparse.ArgumentParser(description='Fast5 to CRAM conversion utility')
+    print("ont2cram (version {})".format(META_INFO['version']))
+    parser = argparse.ArgumentParser(description=META_INFO['description'])
     parser.add_argument('-i','--inputdir', help='Input directory containing Fast5 files', required=True)
     parser.add_argument('-o','--outputfile', help='Output CRAM filename', required=True)
     parser.add_argument('-f','--fastqdir', help='Input directory containing FASTQ files', required=False)
