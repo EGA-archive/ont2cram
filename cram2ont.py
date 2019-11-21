@@ -108,9 +108,14 @@ def cram_to_fast5(cram_filename, output_dir):
             	read_number_short  = "Read_"+str(read.get_tag(READ_NUM_TAG_SHORT))                        
             except KeyError:
             	pass
+
+            output_file = os.path.join(output_dir,fast5_filename)
+            dir = os.path.dirname(output_file)
+            if not os.path.exists(dir) and len(dir)>0 : os.makedirs(dir)
                         
-            with h5py.File( os.path.join(output_dir,fast5_filename), "a" ) as f:
+            with h5py.File( output_file, "a" ) as f:
                 if read.query_name != "nofastq":
+                    print(f"read={read.query_qualities}")
                     fastq_lines = np.string_(
                         "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
                     f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )

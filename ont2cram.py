@@ -217,7 +217,7 @@ def read_fastq_from_file(fn):
         for i in range(0,len(lines),4):
             yield lines[i].split()[0][1:], lines[i+1]
 
-def write_cram(fast5_files, cram_file, skipsignal, fastq_map):
+def write_cram(fast5_base_dir, fast5_files, cram_file, skipsignal, fastq_map):
     total_fast5_files = len(fast5_files)
     comments_list = []
     tag = Tag(FIRST_TAG)
@@ -317,7 +317,7 @@ def write_cram(fast5_files, cram_file, skipsignal, fastq_map):
 
                 for read_group in read_groups:
                 	a_s = pysam.AlignedSegment()
-                	a_s.set_tag( FILENAME_TAG, os.path.basename(filename) )
+                	a_s.set_tag( FILENAME_TAG, os.path.relpath(filename,fast5_base_dir) )
 
                 	read_id    = None
                 	fastq_path = None
@@ -374,7 +374,7 @@ def run(input_dir, fastq_dir, output_file, skip_signal):
         walk_fast5( f, pre_process_group_attrs )
 
     print("Writing CRAM to: '{}'".format(os.path.abspath(output_file)))
-    write_cram( fast5_files, output_file, skip_signal, fastq_map )
+    write_cram( input_dir, fast5_files, output_file, skip_signal, fastq_map )
 
     global_dict_attributes.clear()
     
