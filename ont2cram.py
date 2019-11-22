@@ -215,7 +215,7 @@ def read_fastq_from_file(fn):
         lines = f.read().splitlines()
         if len(lines)%4 > 0: sys.exit("Invalid FASTQ file: '{}'".format(fn))
         for i in range(0,len(lines),4):
-            yield lines[i].split()[0][1:], lines[i+1]
+            yield lines[i].split()[0][1:], lines[i+1], lines[i+3]
 
 def write_cram(fast5_base_dir, fast5_files, cram_file, skipsignal, fastq_map):
     total_fast5_files = len(fast5_files)
@@ -331,8 +331,8 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, skipsignal, fastq_map):
                 	    if not read_id:
                 	        sys.exit("Could not find read_id attribute in :'{}', group='{}'".format(filename,read_group.name))
                 	    fastq_lines[0] = '@'+bytes_to_str(read_id)
-                	    fastq_lines[1] = fastq_map[read_id]
-
+                	    fastq_lines[1],fastq_lines[3] = fastq_map[read_id]
+                	    
                 	a_s.query_name = fastq_lines[0]
                 	a_s.query_sequence=fastq_lines[1]
                 	a_s.query_qualities = pysam.qualitystring_to_array(fastq_lines[3])
@@ -352,8 +352,9 @@ def load_fastq(dir):
     print("Loading FASTQ from: '{}'".format(os.path.abspath(dir)) )		
     map = {}
     for f in tqdm.tqdm( list_files(dir,lambda f:".fastq" in f) ):
-        for read_id,read_fastq in read_fastq_from_file(f):
-            map[str.encode(read_id)] = read_fastq
+        for read_id,seq,qual in read_fastq_from_file(f):
+            #print(f"read_id={read_id}, type={type(read_id)}")
+            map[str.encode(read_id)] = (seq,qual)
     return map
 
 def exit_if_not_dir(d):

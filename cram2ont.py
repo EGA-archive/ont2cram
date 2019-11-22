@@ -115,7 +115,6 @@ def cram_to_fast5(cram_filename, output_dir):
                         
             with h5py.File( output_file, "a" ) as f:
                 if read.query_name != "nofastq":
-                    print(f"read={read.query_qualities}")
                     fastq_lines = np.string_(
                         "\n".join( [read.query_name, read.query_sequence, '+', pysam.array_to_qualitystring(read.query_qualities)+'\n'] ) )
                     f.create_dataset( "/Analyses/Basecall_1D_000/BaseCalled_template/Fastq", data=fastq_lines )
