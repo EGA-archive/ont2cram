@@ -20,7 +20,7 @@ cd ont2cram
 python3 setup.py install
 ~~~
 
-##USAGE:
+## USAGE:
 
 ### converter usage (fast5 > CRAM)
 
