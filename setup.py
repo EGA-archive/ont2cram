@@ -21,16 +21,15 @@ setup(
     keywords=pkg.__keywords__,
     license=pkg.__license__,
     url=pkg.__url__,
-    python_requires ='>=3.5',
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3"
     ],
-    pkgs = [pkg.__name__],
-    pkg_dir = {pkg.__name__: pkg.__name__},
-    pkg_dir = {pkg.__name__: pkg.__name__},
-    pkg_data = {pkg.__name__: ['test/test_data/*', 'test/test_data/*/*']},
+    packages = [pkg.__name__],
+    package_dir = {pkg.__name__: pkg.__name__},
+    package_dir = {pkg.__name__: pkg.__name__},
+    package_data = {pkg.__name__: ['test/test_data/*', 'test/test_data/*/*']},
     entry_points = {'console_scripts': ['ont2cram=ont2cram.__main__:main']}
 )
