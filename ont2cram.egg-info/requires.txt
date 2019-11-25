@@ -1,0 +1,5 @@
+ont_fast5_api>=2.0.0
+tqdm>=4.39.0
+pysam>=0.15.3
+numpy>=1.17.4
+parameterized>=0.7.1
