@@ -107,7 +107,8 @@ def converter (
             cram_file=output_file,
             missing_fastq=missing_fastq,
             skip_signal=skip_signal,
-            fastq_map=fastq_map)
+            fastq_map=fastq_map,
+            progress=progress)
 
     finally:
         global_dict_attributes.clear()
@@ -273,7 +274,7 @@ def is_shared_value(value, total_fast5_files):
 def list_files(dir, condition):
     return [os.path.join(r,file) for r,d,f in os.walk(dir) for file in f if condition(file)]
 
-def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signal, fastq_map):
+def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signal, fastq_map, progress=False):
     """"""
     total_fast5_files = len(fast5_files)
     comments_list = []
@@ -301,7 +302,7 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signa
 
     with pysam.AlignmentFile( cram_file, "wc", header=header, format_options=[b"no_ref=1"] ) as outf:
         #print([k for k in global_dict_attributes.keys() if "Raw" in k] )
-        for filename in tqdm.tqdm(fast5_files):
+        for filename in tqdm.tqdm(fastq_files, unit=" files", unit_scale=True, disable=not progress):
             with h5py.File(filename,'r') as fast5:
 
                 def get_tag_name_cv_type( hdf_full_path ):
