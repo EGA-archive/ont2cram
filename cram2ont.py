@@ -28,7 +28,7 @@ def convert_type(val, typ):
     return np.asscalar( np.array((val)).astype(typ) )
 
 def check_destination_exists(cram_filename, output_dir):
-	with pysam.AlignmentFile(cram_filename, "rc") as samfile:
+	with pysam.AlignmentFile(cram_filename, "rc", check_sq=False) as samfile:
 		for read in samfile.fetch(until_eof=True):
 			fast5_filename = read.get_tag(FILENAME_TAG)
 			fast5_pathname = os.path.join(output_dir,fast5_filename)
@@ -48,7 +48,7 @@ def cram_to_fast5(cram_filename, output_dir):
       is_col = False
 
     attr_dict = {}    
-    with pysam.AlignmentFile(cram_filename, "rc") as samfile:
+    with pysam.AlignmentFile(cram_filename, "rc", check_sq=False) as samfile:
         for comment in samfile.header["CO"]:
             if not comment.startswith(("ATR:","COL:")): continue
 

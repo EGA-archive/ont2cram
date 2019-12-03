@@ -239,7 +239,6 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, skipsignal, fastq_map):
         global_dict_attributes[key][1] = tag_and_val
 
     header = {  'HD': {'VN': '1.0'},
-                'SQ': [{'LN': 0, 'SN': '*'}],
                 'CO': comments_list 
                }    
 
