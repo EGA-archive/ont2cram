@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __version__ = '0.0.3'
-__all__ = ['ont2cram', 'cram2ont', 'common', 'test']
+__all__ = ['converter', 'reverse_converter']
 __license__ = 'Apache License 2.0'
 __author__ = 'EBI'
 __url__ = 'https://github.com/EGA-archive/ont2cram'
