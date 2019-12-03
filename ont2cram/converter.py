@@ -409,7 +409,6 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signa
                             read_name = '@'+bytes_to_str(read_id)
                             read_seq, read_qual = fastq_map[read_id]
 
-
                         a_s.query_name = read_name
                         a_s.query_sequence=read_seq
                         a_s.query_qualities = pysam.qualitystring_to_array(read_qual)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 __all__ = ['ont2cram', 'cram2ont', 'common', 'test']
 __license__ = 'Apache License 2.0'
 __author__ = 'EBI'
