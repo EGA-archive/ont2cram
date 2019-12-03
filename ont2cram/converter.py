@@ -77,14 +77,14 @@ def converter (
         # Check Fast5 dir
         readable_dir(input_dir)
         fast5_files = list_files(input_dir, lambda f:f.endswith('.fast5') )
-        COUNTER["fast5 files found"] += 1
+        COUNTER["fast5 files found"] = len(fast5_files)
         if not fast5_files:
             raise ont2cramError( "No .fast5 files found in '{}'".format(os.path.abspath(input_dir)))
         # Check Fastq dir
         if fastq_dir:
             readable_dir(fastq_dir)
             fastq_files = list_files(fastq_dir, lambda f:f.endswith('.fastq') )
-            COUNTER["fastq files found"] += 1
+            COUNTER["fastq files found"] = len(fastq_files)
             if not fastq_files:
                 raise ont2cramError( "No .fastq files found in '{}'".format(os.path.abspath(fastq_dir)))
         # Check output dir
