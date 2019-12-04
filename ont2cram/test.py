@@ -1,34 +1,34 @@
-# #!/usr/bin/env python3
-# import os
-# import sys
-# import shutil
-# import tempfile
-# import unittest
-# import subprocess
-# import argparse
-# from parameterized import parameterized
-#
-# from ont2cram.converter import converter
-# from ont2cram.reverse_converter import reverse_converter
-#
-# KEEP_TMP = False
-# IGNORE_LINES  = [
-# 	'.fast5" {',
-# 	"H5T_VARIABLE",
-# 	"STRPAD",
-# 	"H5T_CSET_UTF8",
-# 	"DATASPACE"
-# ]
-#
-# TEST_DATA_DIR = os.path.join(os.getcwd(),"test_data") ###################
-#
-# def test(keep_tmp=False):
-#
-# 	global KEEP_TMP
-# 	KEEP_TMP = keep_tmp
-#
-# 	del(sys.argv[1:])
-# 	unittest.main(verbosity=2, buffer=not KEEP_TMP)
+#!/usr/bin/env python3
+import os
+import sys
+import shutil
+import tempfile
+import unittest
+import subprocess
+import argparse
+from parameterized import parameterized
+
+from ont2cram.converter import converter
+from ont2cram.reverse_converter import reverse_converter
+
+KEEP_TMP = False
+IGNORE_LINES  = [
+	'.fast5" {',
+	"H5T_VARIABLE",
+	"STRPAD",
+	"H5T_CSET_UTF8",
+	"DATASPACE"
+]
+
+TEST_DATA_DIR = os.path.join(os.getcwd(),"test_data") ################### WRONG NOW
+
+def test(keep_tmp=False):
+
+	global KEEP_TMP
+	KEEP_TMP = keep_tmp
+
+	del(sys.argv[1:])
+	unittest.main(verbosity=2, buffer=not KEEP_TMP)
 #
 # def get_all_fast5_files(dir):
 # 	return  [f for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith(".fast5")]
