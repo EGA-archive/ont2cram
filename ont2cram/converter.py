@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
+
+# Std lib imports
 import os
 import sys
+import array
+import re
+from functools import partial
+
+# Third party imports
 import h5py
 import pysam
 import tqdm
-import array
-import argparse
-import re
 import numpy
-import gzip
-from functools import partial
+
+# Local imports
 from collections import OrderedDict, Counter
 from ont2cram.common import *
 
 # Define global variables
-
-FIRST_TAG           = "a0"
-LAST_TAG            = "zZ"
-FILENAME_TAG        = "X0"
+FIRST_TAG = "a0"
+LAST_TAG = "zZ"
+FILENAME_TAG = "X0"
 READ_NUM_TAG_SHORT = "X1"
-READ_NUM_TAG_LONG  = "X2"
+READ_NUM_TAG_LONG = "X2"
 
 htslib_parray_types = {
 'i1': 'b',
@@ -67,7 +70,7 @@ def converter (
     quiet=False,
     progress=False,
     **kwargs):
-    """Fast5 to CRAM conversion utility"""
+    """Fast5 to CRAM conversion tool"""
 
     try:
         # Define logger with appropriate verbosity
@@ -92,7 +95,6 @@ def converter (
 
         if fastq_dir:
             logger.info("Loading Fastq files from '{}'".format(os.path.abspath(fastq_dir)))
-            print("Loading FASTQ from: '{}'".format(os.path.abspath(fastq_dir)))
             fastq_map = read_fastq_files (fastq_files=fastq_files, progress=progress)
         else:
             fastq_map=None
@@ -177,7 +179,6 @@ def get_type(value):
 
 def convert_type(value):
     typ = convert_t( get_type(value).str )
-    #print(f"typ={typ}, val_type={type(value)}, value={value[:5] if type(value) is list else value}")
     val = value
     if typ[0]=='S':
         if type(value) is numpy.ndarray:
@@ -244,7 +245,6 @@ def pre_process_group_attrs(_, hdf_node):
 
     node_path     = hdf_node.name
     node_path,_,_ = remove_read_number( node_path )
-    #if "r" in node_path: print("after="+node_path)
 
     if type(hdf_node) is h5py.Dataset:
         columns = hdf_node.dtype.fields.items() if hdf_node.dtype.fields else [('noname', hdf_node.dtype.str)]
@@ -328,7 +328,6 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signa
                         col = get_column(dset,col_name)
 
                         col_values = col.tolist() if type(col) is numpy.ndarray else col
-                        #print(f"hdf_path={hdf_path}, col_name={col_name}, col_type={type(col)}, col_values={col_values[:7]}, res-type={type(col_values[0])}, hdf_type={hdf_type}")
                         tag_val = col_values
                         if type(col_values[0]) is bytes:
                             tag_val = b'\x03'.join(col_values)
@@ -421,4 +420,5 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signa
                         a_s.template_length=0
                         a_s.is_unmapped = True
 
+                        COUNTER["reads written in CRAM"]+=1
                         outf.write(a_s)
