@@ -1,8 +1,0 @@
-README.md
-setup.py
-ont2cram.egg-info/PKG-INFO
-ont2cram.egg-info/SOURCES.txt
-ont2cram.egg-info/dependency_links.txt
-ont2cram.egg-info/entry_points.txt
-ont2cram.egg-info/requires.txt
-ont2cram.egg-info/top_level.txt

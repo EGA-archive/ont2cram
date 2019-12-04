@@ -1,3 +1,0 @@
-[console_scripts]
-ont2cram = ont2cram.__main__:main
-
