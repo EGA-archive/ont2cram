@@ -51,7 +51,7 @@ def reverse_converter (
           is_col = False
 
         attr_dict = {}
-        with pysam.AlignmentFile(input_file, "rc") as samfile:
+        with pysam.AlignmentFile(input_file, "rc", check_sq=False) as samfile:
             logger.debug("Read CRAM header")
             for comment in samfile.header["CO"]:
                 if not comment.startswith(("ATR:","COL:")): continue

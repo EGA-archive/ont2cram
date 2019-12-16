@@ -296,10 +296,7 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signa
         comments_list.append( "{}:'{}':{} {}".format( "COL" if is_column else "ATR", key, hdf_type, tag_and_val) )
         global_dict_attributes[key][1] = tag_and_val
 
-    header = {  'HD': {'VN': '1.0'},
-                'CO': comments_list 
-               }    
-
+    header = {'HD': {'VN':'1.0'}, 'CO':comments_list}
     with pysam.AlignmentFile( cram_file, "wc", header=header, format_options=[b"no_ref=1"] ) as outf:
         for filename in tqdm.tqdm(fast5_files, unit=" files", unit_scale=True, disable=not progress):
             with h5py.File(filename,'r') as fast5:
