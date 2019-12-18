@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# Std lib imports
 import os
 import sys
 import shutil
@@ -7,10 +9,13 @@ import unittest
 import subprocess
 import argparse
 from parameterized import parameterized
+import pkg_resources
 
+# Local imports
 from ont2cram.converter import converter
 from ont2cram.reverse_converter import reverse_converter
 
+# Define global variables
 KEEP_TMP = False
 IGNORE_LINES  = [
 	'.fast5" {',
@@ -20,7 +25,7 @@ IGNORE_LINES  = [
 	"DATASPACE"
 ]
 
-TEST_DATA_DIR = os.path.join(os.getcwd(),"test_data") ################### WRONG NOW
+TEST_DATA_DIR = pkg_resources.resource_filename ("ont2cram", "test_data")
 
 def test(keep_tmp=False):
 
