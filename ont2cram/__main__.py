@@ -8,10 +8,10 @@ import sys
 import os
 
 # Local imports
-from ont2cram.converter import converter
-from ont2cram.reverse_converter import reverse_converter
-from ont2cram.test import test
-import ont2cram as package
+from converter import converter
+from reverse_converter import reverse_converter
+from test import test
+import __init__ as package
 
 def main(args=None):
     """Main command line parser"""
@@ -55,3 +55,6 @@ def main(args=None):
     # Parse args and call subfunction
     args = parser.parse_args()
     args.func(**vars(args))
+
+if __name__ == "__main__":
+    main()

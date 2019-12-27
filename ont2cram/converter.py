@@ -15,7 +15,7 @@ import numpy
 
 # Local imports
 from collections import OrderedDict, Counter
-from ont2cram.common import *
+from common import *
 
 # Define global variables
 FIRST_TAG = "a0"
@@ -404,18 +404,18 @@ def write_cram(fast5_base_dir, fast5_files, cram_file, missing_fastq, skip_signa
                             read_name = '@'+bytes_to_str(read_id)
                             read_seq, read_qual = fastq_map[read_id]
 
-                        a_s.query_name = read_name
-                        a_s.query_sequence=read_seq
-                        a_s.query_qualities = pysam.qualitystring_to_array(read_qual)
-                        a_s.flag = 4
-                        a_s.reference_id = -1
-                        a_s.reference_start = 0
-                        a_s.mapping_quality = 0
-                        a_s.cigar = ()
-                        a_s.next_reference_id = -1
-                        a_s.next_reference_start=0
-                        a_s.template_length=0
-                        a_s.is_unmapped = True
+                    a_s.query_name = read_name
+                    a_s.query_sequence=read_seq
+                    a_s.query_qualities = pysam.qualitystring_to_array(read_qual)
+                    a_s.flag = 4
+                    a_s.reference_id = -1
+                    a_s.reference_start = 0
+                    a_s.mapping_quality = 0
+                    a_s.cigar = ()
+                    a_s.next_reference_id = -1
+                    a_s.next_reference_start=0
+                    a_s.template_length=0
+                    a_s.is_unmapped = True
 
-                        COUNTER["reads written in CRAM"]+=1
-                        outf.write(a_s)
+                    COUNTER["reads written in CRAM"]+=1
+                    outf.write(a_s)

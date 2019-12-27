@@ -15,7 +15,7 @@ import numpy.lib.recfunctions as rfn
 
 # Local imports
 from collections import OrderedDict, Counter
-from ont2cram.common import *
+from common import *
 
 # Define global variables
 DT_STR_VLEN = h5py.special_dtype(vlen=str)
@@ -181,7 +181,7 @@ def convert_type(val, typ):
     return np.asscalar( np.array((val)).astype(typ) )
 
 def check_destination_exists(input_file, output_dir):
-	with pysam.AlignmentFile(input_file, "rc") as samfile:
+	with pysam.AlignmentFile(input_file, "rc", check_sq=False) as samfile:
 		for read in samfile.fetch(until_eof=True):
 			fast5_filename = read.get_tag(FILENAME_TAG)
 			fast5_pathname = os.path.join(output_dir,fast5_filename)
