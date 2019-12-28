@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+__name__ = 'ont2cram'
 __version__ = '0.0.3'
 __all__ = ['converter', 'reverse_converter']
 __license__ = 'Apache License 2.0'
