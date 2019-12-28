@@ -12,7 +12,7 @@ import gzip
 from functools import partial
 
 META_INFO = {
-    'version'     : '0.0.1',
+    'version'     : '0.0.2',
     'license'     : 'Apache License 2.0',
     'author'      : 'EBI',
     'url'         : 'https://github.com/EGA-archive/ont2cram',
