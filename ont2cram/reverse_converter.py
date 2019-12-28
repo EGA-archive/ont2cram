@@ -141,13 +141,13 @@ def reverse_converter (
 
                             if col_name=="noname":
                                 dset.append(tag_val)
+                            elif a.type.startswith(('S','U')):
+                            	tag_split=tag_val.split('\x03')
+                            	for i, x in enumerate(tag_split): tag_split[i]=x.encode('utf-8')
+                            	dset.append(np.array(tag_split, dtype=[(col_name, a.type)]))
                             else:
-                            	dset.append(
-                                    np.array(
-                                        list(tag_val.split('\x03')) if a.type.startswith(('S','U')) else tag_val,
-                                        dtype=[(col_name, a.type)]
-                                    )
-                                 )
+                            	dset.append(np.array(tag_val, dtype=[(col_name, a.type)]))
+                                
                     for dset_name,columns in DSETS.items():
                         d = columns[0] if len(columns)==1 else rfn.merge_arrays(columns, flatten=True, usemask=False)
                         f.create_dataset( dset_name, data=d )
