@@ -15,7 +15,7 @@ import numpy
 
 # Local imports
 from collections import OrderedDict, Counter
-from common import *
+from ont2cram.common import *
 
 # Define global variables
 FIRST_TAG = "a0"

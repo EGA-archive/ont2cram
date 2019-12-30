@@ -15,7 +15,7 @@ import numpy.lib.recfunctions as rfn
 
 # Local imports
 from collections import OrderedDict, Counter
-from common import *
+from ont2cram.common import *
 
 # Define global variables
 DT_STR_VLEN = h5py.special_dtype(vlen=str)

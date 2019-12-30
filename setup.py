@@ -29,6 +29,6 @@ setup(
     ],
     packages = [pkg.__name__],
     package_dir = {pkg.__name__: pkg.__name__},
-    package_data = {pkg.__name__: ['test/test_data/*', 'test/test_data/*/*']},
+    package_data = {pkg.__name__: ['test_data/*', 'test_data/*/*']},
     entry_points = {'console_scripts': ['ont2cram=ont2cram.__main__:main']}
 )

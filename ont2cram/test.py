@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from converter import converter
-from reverse_converter import reverse_converter
+from ont2cram import converter
+from ont2cram import reverse_converter
 
 import os
 import sys
@@ -24,6 +24,7 @@ IGNORE_LINES  = [
 
 
 TEST_DATA_DIR = os.path.join( os.path.dirname(os.path.abspath(__file__)), "test_data" )
+print(f"test data dir = {TEST_DATA_DIR}")
 
 def get_all_fast5_files(dir):
 	return  [f for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith(".fast5")]	
@@ -107,10 +108,10 @@ class Ont2CramTests(unittest.TestCase):
         try:
 
             #forward conversion
-            converter( input_dir=self.fast5_origial_dir, fastq_dir=None, output_file=cram_path, skip_signal=False ) 
+            converter.converter( input_dir=self.fast5_origial_dir, fastq_dir=None, output_file=cram_path, skip_signal=False ) 
             
             #reverse conversion
-            reverse_converter( input_file=cram_path, output_dir=self.fast5_restored_dir )
+            reverse_converter.reverse_converter( input_file=cram_path, output_dir=self.fast5_restored_dir )
             
             h5dump_all_files_in_dir( self.fast5_origial_dir,  self.h5dump_original_dir )    
             h5dump_all_files_in_dir( self.fast5_restored_dir, self.h5dump_restored_dir )   
