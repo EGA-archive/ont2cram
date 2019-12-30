@@ -12,12 +12,18 @@ Oxford Nanopore HDF/Fast5 to CRAM conversion tool
 pip3 install git+https://github.com/EGA-archive/ont2cram
 ~~~
 
-### Installation with pip from Github
+### Installation via setup.py
 
 ~~~
 git clone https://github.com/EGA-archive/ont2cram
 cd ont2cram
 python3 setup.py install
+~~~
+
+### Running tests
+
+~~~
+ont2cram test
 ~~~
 
 ## USAGE:
